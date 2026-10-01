@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://voip-dataset-framework/schemas/user.schema.json",
+  "title": "SyntheticUser",
+  "description": "Schema for a single synthetic communication participant (Phase 2, Step 1).",
+  "type": "object",
+  "required": [
+    "user_id", "user_type", "organization_domain", "user_role",
+    "communication_activity_level", "communication_behaviour_profile",
+    "preferred_communication_categories", "preferred_active_days",
+    "has_frequent_contacts", "frequent_contacts", "environment"
+  ],
+  "properties": {
+    "user_id": { "type": "string", "description": "Unique identifier; see user_identifier_generation_strategy." },
+    "user_type": { "type": "string", "enum": ["internal", "external"] },
+    "phone_number": { "type": ["string", "null"], "description": "4-digit internal extension, or a synthetic external phone number." },
+    "sip_identifier": { "type": ["string", "null"], "description": "sip:user@domain form; null for non-SIP-registered external contacts." },
+    "ip_address": { "type": "string", "description": "IPv4 address, allocated per ip_address_allocation_strategy." },
+    "department_group": { "type": ["string", "null"], "description": "Department/group id; null for external users (see community_id instead)." },
+    "organization_domain": { "type": "string" },
+    "active_hours": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": { "type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "end": { "type": "string", "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$" },
+        "shift_label": { "type": "string" }
+      }
+    },
+    "communication_activity_level": { "type": "string", "enum": ["low", "medium", "high"] },
+    "preferred_communication_categories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": ["business_communication", "customer_support", "administrative_communication", "emergency_communication", "personal_communication"]
+      }
+    },
+    "has_frequent_contacts": { "type": "boolean" },
+    "frequent_contacts": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "List of other user_ids; empty when has_frequent_contacts is false."
+    },
+    "preferred_active_days": { "type": "string", "enum": ["weekdays", "weekends", "both"] },
+    "user_role": {
+      "type": "string",
+      "enum": [ "manager", "employee", "ceo", "customer_support_agent", "customer", "support_manager", "team_lead"]
+    },
+    "org_role_id": {
+      "type": ["string", "null"],
+      "description": "The environment-specific Step 2 organizational_structure.roles id this user was actually generated from (e.g. 'agent_t1', 'dept_head'), before mapping to the canonical user_role vocabulary. Null for external users, who have no Step 2 role. Retained for traceability between this schema and Step 2's org structure."
+    },
+    "communication_behaviour_profile": { "type": "string", "enum": ["low", "medium", "high", "burst", "periodic"] },
+    "community_id": { "type": "string", "description": "department_group for internal users; organization_domain for external users." },
+    "internal_external_comm_preference": {
+      "type": "number", "minimum": 0, "maximum": 1,
+      "description": "Probability weight this user's calls skew toward the opposite user_type (internal users calling out, external users calling in)."
+    },
+    "environment": { "type": "string", "description": "Which Step 2 scenario environment this user belongs to." },
+    "is_active": {
+      "type": "boolean",
+      "description": "Whether this user is drawn from the active fraction of the population (Step 2 active_user_percentage). Always true for external users. Internal users with is_active=false are excluded or heavily downweighted in caller/callee selection per the environment's inactive_user_behavior (zero_calls/minimal_calls)."
+    },
+    "call_weight": {
+      "type": "number", "minimum": 0,
+      "description": "Selection weight consumed by Step 7's caller/callee selection: 1.0 for active users; for inactive internal users, 0.0 if inactive_user_behavior=zero_calls, else 0.1 (minimal_calls)."
+    }
+  }
+}

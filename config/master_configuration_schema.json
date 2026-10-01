@@ -1,0 +1,270 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://voip-dataset-framework/schemas/master_configuration.schema.json",
+  "title": "RunConfiguration",
+  "description": "Top-level configuration file that controls a full dataset generation run. Composes the Step 2 (environment), Step 3 (categories), Step 4 (patterns), Step 5 (selection rules), and Step 6 (protocol/codec) artifacts via a base-scenario + override pattern, and adds dataset_size, which none of those steps owned individually.",
+  "type": "object",
+  "required": ["schema_version", "dataset_size", "environments", "output"],
+  "properties": {
+    "schema_version": { "type": "string" },
+
+    "run_metadata": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "dataset_size": {
+      "type": "object",
+      "required": ["mode", "random_seed"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["single_environment", "per_environment", "total_target"] },
+        "record_count": { "type": "integer", "minimum": 1, "description": "Required for single_environment or per_environment modes." },
+        "total_records": { "type": "integer", "minimum": 1, "description": "Required for total_target mode." },
+        "environment_weights": {
+          "type": "object",
+          "description": "Optional, total_target mode only. Maps environment_id -> proportion of total_records. Defaults to an equal split across environments if omitted.",
+          "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+        },
+        "random_seed": { "type": "integer" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "const": "single_environment" } } },
+          "then": { "required": ["record_count"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "per_environment" } } },
+          "then": { "required": ["record_count"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "total_target" } } },
+          "then": { "required": ["total_records"] }
+        }
+      ]
+    },
+
+    "environments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["environment_id", "base_scenario"],
+        "properties": {
+          "environment_id": { "type": "string" },
+          "base_scenario": {
+            "type": "string",
+            "enum": ["enterprise", "customer_support_scenario", "custom"]
+          },
+
+          "observation_period_overrides": {
+            "type": "object",
+            "description": "Step 2 §i shape. Optional if base_scenario is a named profile; required (in full) if base_scenario=custom.",
+            "properties": {
+              "start_datetime": { "type": "string", "format": "date-time" },
+              "end_datetime": { "type": "string", "format": "date-time" },
+              "duration_preset": { "type": "string", "enum": ["single_day", "one_week", "one_month", "custom"] },
+              "timezone": { "type": "string" },
+              "granularity": { "type": "string", "enum": ["second", "minute"] },
+              "include_holidays": { "type": "boolean" },
+              "holiday_calendar": { "type": "string" }
+            }
+          },
+
+          "user_population_overrides": {
+            "type": "object",
+            "description": "Step 2 §ii (communication_scale) + §v (organizational_structure) shape.",
+            "properties": {
+              "num_users": { "type": "integer", "minimum": 1 },
+              "avg_calls_per_user_per_day": { "type": "number", "minimum": 0 },
+              "max_calls_per_user_per_day": { "type": "integer", "minimum": 0 },
+              "active_user_percentage": { "type": "number", "minimum": 0, "maximum": 1 },
+              "frequent_callers_per_user": {
+                "type": "object",
+                "properties": { "min": { "type": "integer" }, "max": { "type": "integer" } }
+              },
+              "departments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "name", "size"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "size": { "type": "integer", "minimum": 0 },
+                    "communication_affinity": { "type": "number", "minimum": 0, "maximum": 1 }
+                  }
+                }
+              },
+              "roles": {
+                "type": "array",
+                "description": "Step 2 organizational_structure.roles shape. Optional for custom scenarios - if omitted, one department-agnostic (department: '*') role is synthesized per role_distribution key, giving a flat weighted draw with no per-department eligibility. Provide this explicitly for department-specific role eligibility (e.g. an admin-only role restricted to one department). When provided, role ids should be Step 1's canonical user_role vocabulary directly (student/faculty/administrative_staff/manager/employee/customer_support_agent/customer/dispatcher/external_contact), since custom scenarios have no separate org-role-to-canonical-role mapping step.",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "name", "department"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "name": { "type": "string" },
+                    "department": { "type": "string", "description": "A department id, or '*' for department-agnostic (eligible everywhere)." },
+                    "seniority_level": { "type": "string" },
+                    "call_privilege_tier": { "type": "string" }
+                  }
+                }
+              },
+              "intra_department_call_ratio": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          },
+
+          "network_configuration_overrides": {
+            "type": "object",
+            "description": "Step 2 §vi shape. Optional for named profiles (inherited from the base scenario). Optional for custom scenarios too, with a graceful fallback: if omitted, a single synthesized internal CIDR (10.99.0.0/16) with no per-department segmentation is used (see run_config_resolver.py's module docstring). Provide this explicitly for a custom scenario that needs real per-department network segmentation.",
+            "properties": {
+              "internal_ip_ranges": { "type": "array", "items": { "type": "string" } },
+              "external_ip_ranges": { "type": "array", "items": { "type": "string" } },
+              "network_segments": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "segment_id": { "type": "string" },
+                    "cidr": { "type": "string" },
+                    "department_ids": { "type": "array", "items": { "type": "string" } },
+                    "vlan_id": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+
+          "user_attribute_overrides": {
+            "type": "object",
+            "description": "Step 1 population_by_environment shape (config/users/user_population_characteristics.json) — gap fix: Step 9 originally had no way to override Step 1's per-user attribute distributions at all, since Step 9 predates Step 1 existing as a formal deliverable in this project. Overrides here replace entries in Step 1's population characteristics for this environment.",
+            "properties": {
+              "internal_vs_external_ratio": {
+                "type": "object",
+                "properties": { "internal": { "type": "number", "minimum": 0, "maximum": 1 }, "external": { "type": "number", "minimum": 0, "maximum": 1 } }
+              },
+              "role_distribution": {
+                "type": "object",
+                "description": "Keys from Step 1's canonical user_role vocabulary. If provided, must sum to 1.0.",
+                "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+              },
+              "communication_activity_level_distribution": {
+                "type": "object",
+                "properties": { "low": { "type": "number" }, "medium": { "type": "number" }, "high": { "type": "number" } }
+              },
+              "communication_behaviour_profile_distribution": {
+                "type": "object",
+                "properties": { "low": { "type": "number" }, "medium": { "type": "number" }, "high": { "type": "number" }, "burst": { "type": "number" }, "periodic": { "type": "number" } }
+              },
+              "percentage_with_frequent_contacts": { "type": "number", "minimum": 0, "maximum": 1 },
+              "average_frequent_contacts_per_user": {
+                "type": "object",
+                "properties": { "min": { "type": "integer" }, "max": { "type": "integer" } }
+              },
+              "active_hours_distribution": {
+                "type": "object",
+                "description": "Keys are shift-preset labels (e.g. 'standard_business', 'night_shift'); values are selection weights.",
+                "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+              },
+              "preferred_active_days_distribution": {
+                "type": "object",
+                "properties": { "weekdays": { "type": "number" }, "weekends": { "type": "number" }, "both": { "type": "number" } }
+              },
+              "external_softphone_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+              "external_domains": { "type": "array", "items": { "type": "string" } },
+              "default_external_role": {
+                "type": "string",
+                "enum": ["customer", "external_contact"],
+                "description": "Which canonical role external users default to. Gap fix: this was previously hardcoded in code as a check against the literal environment name 'emergency_response', which silently broke for any renamed environment_id or custom scenario."
+              }
+            }
+          },
+
+          "communication_category_overrides": {
+            "type": "object",
+            "description": "Step 3 §3 shape — full or partial replacement of the environment's category_mix. Keys are category ids from communication_categories.json; if provided, must sum to 1.0.",
+            "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+
+          "communication_pattern_overrides": {
+            "type": "object",
+            "description": "Step 4 shape — keyed by category_id, partial override of that category's pattern profile (e.g. duration band, temporal shape). Rare in practice; patterns are largely category-intrinsic rather than environment-specific.",
+            "additionalProperties": { "type": "object" }
+          },
+
+          "protocol_distribution_overrides": {
+            "type": "object",
+            "description": "Step 6 §5.3 shape — replaces the environment's signaling/media protocol weights.",
+            "properties": {
+              "SIP": { "type": "number", "minimum": 0, "maximum": 1 },
+              "H.323": { "type": "number", "minimum": 0, "maximum": 1 },
+              "RTP": { "type": "number", "minimum": 0, "maximum": 1 },
+              "SRTP": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          },
+
+          "codec_distribution_overrides": {
+            "type": "object",
+            "description": "Step 6 §5.3 shape — replaces the environment's codec weight table. If provided, must sum to 1.0 across included codecs.",
+            "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+
+          "relationship_rule_overrides": {
+            "type": "object",
+            "description": "Step 5 §5 shape — replaces mechanism_weights and/or relationship_type_mix for this environment.",
+            "properties": {
+              "mechanism_weights": {
+                "type": "object",
+                "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+              },
+              "relationship_type_mix": {
+                "type": "object",
+                "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "base_scenario": { "const": "custom" } } },
+            "then": {
+              "required": [
+                "observation_period_overrides",
+                "user_population_overrides",
+                "user_attribute_overrides",
+                "communication_category_overrides",
+                "protocol_distribution_overrides",
+                "codec_distribution_overrides",
+                "relationship_rule_overrides"
+              ]
+            }
+          }
+        ]
+      }
+    },
+
+    "output": {
+      "type": "object",
+      "required": ["formats"],
+      "properties": {
+        "formats": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "enum": ["json", "csv"] }
+        },
+        "output_directory": { "type": "string" }
+      }
+    }
+  },
+
+  "validation_notes": {
+    "environment_id_uniqueness": "Every environment_id in environments[] must be unique within the run configuration.",
+    "distribution_sums": "communication_category_overrides, codec_distribution_overrides, and relationship_type_mix, when provided, must each sum to 1.0 +/- 0.001. protocol_distribution_overrides' SIP+H.323 pair and RTP+SRTP pair must each sum to 1.0 +/- 0.001 independently.",
+    "dataset_size_mode_consistency": "single_environment and per_environment modes require record_count; total_target mode requires total_records.",
+    "single_environment_mode": "dataset_size.mode=single_environment is only valid when environments[] has exactly one entry."
+  }
+}

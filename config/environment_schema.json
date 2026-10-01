@@ -1,0 +1,323 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://voip-dataset-framework/schemas/environment_config.schema.json",
+  "title": "EnvironmentConfig",
+  "description": "Configurable environment definition controlling synthetic VoIP dataset generation (Phase 2, Step 2).",
+  "type": "object",
+  "required": [
+    "metadata",
+    "observation_period",
+    "communication_scale",
+    "traffic_distribution",
+    "call_outcome_distribution",
+    "organizational_structure",
+    "network_configuration",
+    "protocol_configuration",
+    "codec_distribution"
+  ],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["name", "base_scenario", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "base_scenario": {
+          "type": "string",
+          "enum": ["enterprise", "customer_support", "custom"]
+        },
+        "version": { "type": "string" }
+      }
+    },
+
+    "observation_period": {
+      "type": "object",
+      "required": ["start_datetime", "end_datetime", "timezone", "granularity"],
+      "properties": {
+        "start_datetime": { "type": "string", "format": "date-time" },
+        "end_datetime": { "type": "string", "format": "date-time" },
+        "duration_preset": { "type": "string", "enum": ["single_day", "one_week", "one_month", "custom"] },
+        "timezone": { "type": "string" },
+        "granularity": { "type": "string", "enum": ["second", "minute"] },
+        "include_holidays": { "type": "boolean" },
+        "holiday_calendar": { "type": "string" }
+      }
+    },
+
+    "communication_scale": {
+      "type": "object",
+      "required": ["num_users", "num_communication_sessions", "avg_calls_per_user_per_day", "max_calls_per_user_per_day", "active_user_percentage"],
+      "properties": {
+        "num_users": { "type": "integer", "minimum": 1 },
+        "num_communication_sessions": {
+          "oneOf": [
+            { "type": "integer", "minimum": 0 },
+            { "type": "string", "enum": ["derived"] }
+          ]
+        },
+        "avg_calls_per_user_per_day": { "type": "number", "minimum": 0 },
+        "max_calls_per_user_per_day": { "type": "integer", "minimum": 0 },
+        "active_user_percentage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "frequent_callers_per_user": {
+          "type": "object",
+          "properties": {
+            "min": { "type": "integer", "minimum": 0 },
+            "max": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "pairwise_frequency_model": {
+          "type": "object",
+          "required": ["distribution"],
+          "properties": {
+            "distribution": { "type": "string", "enum": ["zipfian", "power_law", "uniform"] },
+            "zipf_exponent": { "type": "number" },
+            "power_law_exponent": { "type": "number" }
+          }
+        },
+        "inactive_user_behavior": { "type": "string", "enum": ["zero_calls", "minimal_calls"] }
+      }
+    },
+
+    "traffic_distribution": {
+      "type": "object",
+      "required": ["peak_hours", "off_peak_hours", "weekday_weekend_ratio", "daily_weight_profile"],
+      "properties": {
+        "peak_hours": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["start", "end", "weight_multiplier"],
+            "properties": {
+              "start": { "type": "integer", "minimum": 0, "maximum": 23 },
+              "end": { "type": "integer", "minimum": 0, "maximum": 23 },
+              "weight_multiplier": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "off_peak_hours": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["start", "end", "weight_multiplier"],
+            "properties": {
+              "start": { "type": "integer", "minimum": 0, "maximum": 23 },
+              "end": { "type": "integer", "minimum": 0, "maximum": 23 },
+              "weight_multiplier": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "weekday_weekend_ratio": { "type": "number", "minimum": 0 },
+        "daily_weight_profile": {
+          "type": "array",
+          "minItems": 7,
+          "maxItems": 7,
+          "items": { "type": "number", "minimum": 0 }
+        },
+        "burst_periods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["trigger", "multiplier"],
+            "properties": {
+              "trigger": { "type": "string" },
+              "start": { "type": "string" },
+              "end": { "type": "string" },
+              "multiplier": { "type": "number", "minimum": 0 },
+              "probability": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "intraday_curve_shape": { "type": "string", "enum": ["bimodal", "flat", "single_peak", "24x7_uniform"] }
+      }
+    },
+
+    "call_outcome_distribution": {
+      "type": "object",
+      "required": ["answered_probability", "busy_probability", "no_answer_probability", "rejected_probability", "failed_probability"],
+      "properties": {
+        "answered_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "busy_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "no_answer_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rejected_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "failed_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+        "outcome_by_category": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "answered_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+              "busy_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+              "no_answer_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+              "rejected_probability": { "type": "number", "minimum": 0, "maximum": 1 },
+              "failed_probability": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        }
+      }
+    },
+
+    "organizational_structure": {
+      "type": "object",
+      "required": ["structure_type", "departments", "roles"],
+      "properties": {
+        "structure_type": {
+          "type": "string",
+          "enum": ["flat", "hierarchical", "functional", "divisional", "matrix", "team_based", "network", "department_based"]
+        },
+        "departments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "size"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "size": { "type": "integer", "minimum": 0 },
+              "communication_affinity": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "department"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "department": { "type": "string" },
+              "seniority_level": { "type": "string" },
+              "call_privilege_tier": { "type": "string" }
+            }
+          }
+        },
+        "reporting_lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "report_id": { "type": "string" },
+              "manager_id": { "type": "string" }
+            }
+          }
+        },
+        "intra_department_call_ratio": { "type": "number", "minimum": 0, "maximum": 1 },
+        "cross_department_matrix": { "type": "object" },
+        "shift_pattern": {
+          "type": ["object", "null"],
+          "properties": {
+            "shifts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "start": { "type": "string" },
+                  "end": { "type": "string" }
+                }
+              }
+            },
+            "handover_overlap_minutes": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+
+    "network_configuration": {
+      "type": "object",
+      "required": ["internal_ip_ranges", "external_ip_ranges"],
+      "properties": {
+        "internal_ip_ranges": { "type": "array", "items": { "type": "string" } },
+        "external_ip_ranges": { "type": "array", "items": { "type": "string" } },
+        "nat_enabled": { "type": "boolean" },
+        "network_segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "segment_id": { "type": "string" },
+              "cidr": { "type": "string" },
+              "department_ids": { "type": "array", "items": { "type": "string" } },
+              "vlan_id": { "type": "integer" }
+            }
+          }
+        },
+        "remote_access_ratio": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+
+    "protocol_configuration": {
+      "type": "object",
+      "required": ["signaling_protocols", "media_protocols"],
+      "properties": {
+        "signaling_protocols": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["protocol", "weight"],
+            "properties": {
+              "protocol": { "type": "string", "enum": ["SIP", "H.323"] },
+              "weight": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "media_protocols": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["protocol", "weight"],
+            "properties": {
+              "protocol": { "type": "string", "enum": ["RTP", "SRTP"] },
+              "weight": { "type": "number", "minimum": 0, "maximum": 1 }
+            }
+          }
+        },
+        "sip_port_range": {
+          "type": "object",
+          "properties": { "min": { "type": "integer" }, "max": { "type": "integer" } }
+        },
+        "rtp_port_range": {
+          "type": "object",
+          "properties": { "min": { "type": "integer" }, "max": { "type": "integer" } }
+        },
+        "encryption_ratio": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+
+    "codec_distribution": {
+      "type": "object",
+      "required": ["codecs"],
+      "properties": {
+        "codecs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "weight"],
+            "properties": {
+              "name": { "type": "string", "enum": ["G.711", "G.729", "G.722", "Opus", "iLBC"] },
+              "weight": { "type": "number", "minimum": 0, "maximum": 1 },
+              "bitrate_kbps": { "type": "number" },
+              "sample_rate_hz": { "type": "integer" },
+              "typical_use": { "type": "string" }
+            }
+          }
+        },
+        "codec_by_network_type": { "type": "object" }
+      }
+    },
+
+    "validation_rules": {
+      "type": "object",
+      "description": "Documents the cross-field constraints enforced by the generator engine (see spec section 5).",
+      "properties": {
+        "outcome_probabilities_sum_to_one": { "type": "boolean", "default": true },
+        "avg_le_max_calls_per_day": { "type": "boolean", "default": true },
+        "start_before_end": { "type": "boolean", "default": true },
+        "protocol_weights_sum_to_one": { "type": "boolean", "default": true },
+        "codec_weights_sum_to_one": { "type": "boolean", "default": true },
+        "department_refs_resolve": { "type": "boolean", "default": true },
+        "session_count_tolerance_pct": { "type": "number", "default": 15 }
+      }
+    }
+  }
+}

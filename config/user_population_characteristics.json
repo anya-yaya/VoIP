@@ -1,0 +1,172 @@
+{
+  "metadata": {
+    "name": "User Population Characteristics",
+    "version": "1.0",
+    "description": "Distributions and strategies governing synthetic user population generation. Extends Step 2's organizational_structure/communication_scale with the attribute-level distributions Step 1 requires (activity level, behaviour profile, frequent-contact prevalence, active hours, preferred categories)."
+  },
+  "user_identifier_generation_strategy": {
+    "internal": "{environment_id}_usr_{8-char hex}, guaranteed unique within environment",
+    "external": "{environment_id}_ext_{8-char hex}, guaranteed unique within environment; disjoint namespace from internal ids"
+  },
+  "ip_address_allocation_strategy": {
+    "internal": "Drawn from the department's network_segment CIDR (Step 2 network_configuration.network_segments) if defined, else the environment's default internal_ip_ranges entry.",
+    "external": "Drawn from a placeholder public address pool (203.0.113.0/24, TEST-NET-3), representing PSTN/internet-originated endpoints outside the modeled internal network."
+  },
+  "phone_extension_strategy": {
+    "internal": "4-digit extension, unique within environment, formatted as a string ('1000'-'9999').",
+    "external": "Synthetic E.164-like number, format '+1-555-{7 random digits}', not guaranteed globally unique (mirrors real-world caller-ID reuse/spoofing)."
+  },
+  "sip_identifier_strategy": {
+    "internal": "sip:{user_id}@{organization_domain} \u2014 every internal user is SIP-registered.",
+    "external": "null for pure PSTN-style external contacts; populated for the subset of external users flagged is_softphone_external (see external_softphone_ratio below), using sip:{user_id}@{external_domain}."
+  },
+  "organization_domain_strategy": {
+    "internal": "{environment_id}.example.org, one domain per environment.",
+    "external": "Assigned from a small per-environment pool of synthetic partner/vendor/public domains (3-5 per environment), reused across multiple external users to model calls from the same organization."
+  },
+  "population_by_environment": {
+    "enterprise": {
+      "internal_vs_external_ratio": {
+        "internal": 0.85,
+        "external": 0.15
+      },
+      "external_softphone_ratio": 0.3,
+      "external_domains": [
+        "clientcorp.example.com",
+        "vendorsupply.example.com",
+        "partnerfirm.example.com"
+      ],
+      "role_distribution": {
+        "manager": 0.08,
+        "employee": 0.82,
+        "ceo": 0.1
+      },
+      "communication_activity_level_distribution": {
+        "low": 0.25,
+        "medium": 0.55,
+        "high": 0.2
+      },
+      "communication_behaviour_profile_distribution": {
+        "low": 0.2,
+        "medium": 0.45,
+        "high": 0.2,
+        "burst": 0.05,
+        "periodic": 0.1
+      },
+      "percentage_with_frequent_contacts": 0.75,
+      "average_frequent_contacts_per_user": {
+        "min": 4,
+        "max": 15
+      },
+      "active_hours_distribution": {
+        "standard_business": 0.8,
+        "early_shift": 0.1,
+        "late_shift": 0.1
+      },
+      "preferred_active_days_distribution": {
+        "weekdays": 0.85,
+        "both": 0.13,
+        "weekends": 0.02
+      },
+      "preferred_category_bias": {
+        "manager": [
+          "business_communication",
+          "administrative_communication"
+        ],
+        "employee": [
+          "business_communication",
+          "personal_communication"
+        ],
+        "administrative_staff": [
+          "administrative_communication",
+          "business_communication"
+        ]
+      },
+      "internal_external_comm_preference": {
+        "manager": 0.25,
+        "employee": 0.12,
+        "ceo": 0.15
+      },
+      "default_external_role": "customer"
+    },
+   
+    "customer_support_scenario": {
+      "internal_vs_external_ratio": {
+        "internal": 0.35,
+        "external": 0.65
+      },
+      "external_softphone_ratio": 0.4,
+      "external_domains": [
+        "consumermail.example.com",
+        "smallbizmail.example.com",
+        "resellermail.example.com"
+      ],
+      "role_distribution": {
+        "customer_support_agent": 0.95,
+        "support_manager": 0.01,
+        "team_lead": 0.04
+      },
+      "communication_activity_level_distribution": {
+        "low": 0.05,
+        "medium": 0.25,
+        "high": 0.7
+      },
+      "communication_behaviour_profile_distribution": {
+        "low": 0.05,
+        "medium": 0.2,
+        "high": 0.55,
+        "burst": 0.15,
+        "periodic": 0.05
+      },
+      "percentage_with_frequent_contacts": 0.4,
+      "average_frequent_contacts_per_user": {
+        "min": 0,
+        "max": 3
+      },
+      "active_hours_distribution": {
+        "morning_shift": 0.34,
+        "afternoon_shift": 0.33,
+        "night_shift": 0.33
+      },
+      "preferred_active_days_distribution": {
+        "weekdays": 0.6,
+        "both": 0.4,
+        "weekends": 0.0
+      },
+      "preferred_category_bias": {
+        "customer_support_agent": [
+          "customer_support",
+          "business_communication"
+        ],
+        "manager": [
+          "business_communication",
+          "customer_support", 
+          "administrative_communication"
+        ],
+        "team_lead": [
+          "business_communication",
+          "customer_support"
+        ],
+        "customer": [
+          "customer_support"
+        ]
+      },
+      "internal_external_comm_preference": {
+        "customer_support_agent": 0.75,
+        "support_manager": 0.05,
+        "team_lead": 0.25
+      },
+      "default_external_role": "customer"
+    }
+  },
+  "community_membership_note": "Internal community membership = department_id (Step 2 organizational_structure), consistent with Step 5's community_based_selection mechanism. External users' community = their assigned organization_domain, so external users from the same partner/vendor cluster together the same way internal departments do.",
+  "role_vocabulary": [
+    "manager",
+    "employee",
+    "ceo",
+    "customer_support_agent",
+    "support_manager",
+    "team_lead",
+    "customer"
+  ]
+}

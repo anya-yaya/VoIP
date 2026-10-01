@@ -1,0 +1,110 @@
+{
+  "metadata": {
+    "name": "Customer Support Centre",
+    "description": "High-volume inbound contact centre with tiered agents, queueing, and shift-based staffing.",
+    "base_scenario": "customer_support",
+    "version": "1.0"
+  },
+  "observation_period": {
+    "start_datetime": "2026-01-05T00:00:00",
+    "end_datetime": "2026-01-12T00:00:00",
+    "duration_preset": "one_week",
+    "timezone": "UTC",
+    "granularity": "second",
+    "include_holidays": false,
+    "holiday_calendar": "none"
+  },
+  "communication_scale": {
+    "num_users": 600,
+    "num_communication_sessions": "derived",
+    "avg_calls_per_user_per_day": 55,
+    "max_calls_per_user_per_day": 120,
+    "active_user_percentage": 0.95,
+    "frequent_callers_per_user": { "min": 0, "max": 3 },
+    "pairwise_frequency_model": { "distribution": "uniform" },
+    "inactive_user_behavior": "minimal_calls"
+  },
+  "traffic_distribution": {
+    "peak_hours": [
+      { "start": 9, "end": 12, "weight_multiplier": 2.0 },
+      { "start": 17, "end": 20, "weight_multiplier": 2.3 }
+    ],
+    "off_peak_hours": [
+      { "start": 1, "end": 6, "weight_multiplier": 0.3 }
+    ],
+    "weekday_weekend_ratio": 1.6,
+    "daily_weight_profile": [1.0, 1.0, 1.0, 1.0, 1.0, 0.7, 0.6],
+    "burst_periods": [
+      { "trigger": "product_incident", "start": "random", "end": "random_plus_3h", "multiplier": 4.0, "probability": 0.1 },
+      { "trigger": "billing_cycle_start", "start": "day_1", "end": "day_2", "multiplier": 1.8, "probability": 0.8 }
+    ],
+    "intraday_curve_shape": "bimodal"
+  },
+  "call_outcome_distribution": {
+    "answered_probability": 0.62,
+    "busy_probability": 0.07,
+    "no_answer_probability": 0.2,
+    "rejected_probability": 0.05,
+    "failed_probability": 0.06,
+    "outcome_by_category": {
+      "tier1_inbound": { "answered_probability": 0.58, "busy_probability": 0.08, "no_answer_probability": 0.22, "rejected_probability": 0.05, "failed_probability": 0.07 },
+      "escalation_to_tier2": { "answered_probability": 0.88, "busy_probability": 0.03, "no_answer_probability": 0.06, "rejected_probability": 0.01, "failed_probability": 0.02 }
+    }
+  },
+  "organizational_structure": {
+    "structure_type": "hierarchical_tiered",
+   
+    "roles": [ "support_manager", "team_lead", "agent", "customer" ],
+    "role_hierarchy": {
+      "support_manager": ["team_lead"],
+      "team_lead": ["agent"],
+      "agent": [],
+      "customer": []
+    },
+    "reporting_lines": [],
+  
+    "shift_pattern": {
+      "shifts": [
+        { "name": "morning", "start": "06:00", "end": "14:00" },
+        { "name": "afternoon", "start": "14:00", "end": "22:00" },
+        { "name": "night", "start": "22:00", "end": "06:00" }
+      ],
+      "handover_overlap_minutes": 15
+    }
+  },
+  "network_configuration": {
+    "internal_ip_ranges": ["10.50.0.0/16"],
+    "external_ip_ranges": ["0.0.0.0/0"],
+    "nat_enabled": true,
+    "network_segments": [
+      { "segment_id": "seg-agents", "cidr": "10.50.10.0/23", "applies_to": ["agent"], "vlan_id": 310 },
+      { "segment_id": "seg-support", "cidr": "10.50.20.0/24", "applies_to": ["agent", "team_lead","support_manager"], "vlan_id": 320 },
+      { "segment_id": "seg-ivr", "cidr": "10.50.30.0/28", "applies_to": ["ivr_system"], "vlan_id": 330 }
+    ],
+    "remote_access_ratio": 0.2
+  },
+  "protocol_configuration": {
+    "signaling_protocols": [
+      { "protocol": "SIP", "weight": 1.0 },
+      { "protocol": "H.323", "weight": 0.0 }
+    ],
+    "media_protocols": [
+      { "protocol": "RTP", "weight": 0.5 },
+      { "protocol": "SRTP", "weight": 0.5 }
+    ],
+    "sip_port_range": { "min": 5060, "max": 5070 },
+    "rtp_port_range": { "min": 16384, "max": 32767 },
+    "encryption_ratio": 0.5
+  },
+  "codec_distribution": {
+    "codecs": [
+      { "name": "G.711", "weight": 0.5, "bitrate_kbps": 64, "sample_rate_hz": 8000, "typical_use": "PSTN gateway trunks" },
+      { "name": "G.729", "weight": 0.3, "bitrate_kbps": 8, "sample_rate_hz": 8000, "typical_use": "high-density agent lines" },
+      { "name": "Opus", "weight": 0.2, "bitrate_kbps": 24, "sample_rate_hz": 48000, "typical_use": "web/softphone channel" }
+    ],
+    "codec_by_network_type": {
+      "internal": [{ "name": "G.729", "weight": 0.7 }, { "name": "G.711", "weight": 0.3 }],
+      "external": [{ "name": "G.711", "weight": 0.7 }, { "name": "Opus", "weight": 0.3 }]
+    }
+  }
+}

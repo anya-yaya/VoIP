@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoIP Communication Analytics – Enterprise &amp; Customer Support</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --bg:#0B1220; --panel:#121B2E; --panel2:#0F1729; --border:#22304C; --border-soft:#1A2540;
+  --text:#E7ECF3; --muted:#8491AC; --muted2:#5C6A87;
+  --ent:#4FD1C5; --ent-dim:#1F4A47; --cs:#F2A65A; --cs-dim:#4A3720;
+  --ok:#54D18C; --warn:#F2C245; --bad:#E2637A; --neutral:#7C8AA5;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;}
+::selection{background:var(--ent);color:#06110F;}
+
+.app{display:flex;min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{width:260px;flex-shrink:0;background:var(--panel2);border-right:1px solid var(--border);
+  padding:22px 18px;display:flex;flex-direction:column;gap:22px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.brand{display:flex;flex-direction:column;gap:4px;}
+.brand .eyebrow{font-size:10.5px;letter-spacing:1.6px;color:var(--neutral);text-transform:uppercase;font-weight:700;}
+.brand h1{font-size:17px;margin:0;line-height:1.3;font-weight:700;letter-spacing:-0.2px;}
+.brand .sub{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+.scenario-toggle{display:flex;flex-direction:column;gap:6px;}
+.toggle-label{font-size:10.5px;letter-spacing:1.2px;color:var(--muted2);text-transform:uppercase;font-weight:700;margin-bottom:2px;}
+.toggle-btn{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel);color:var(--muted);cursor:pointer;font-size:13px;font-weight:600;transition:all .15s ease;text-align:left;}
+.toggle-btn:hover{border-color:var(--muted2);color:var(--text);}
+.toggle-btn.active[data-scn="enterprise"]{border-color:var(--ent);color:var(--ent);background:var(--ent-dim);}
+.toggle-btn.active[data-scn="support"]{border-color:var(--cs);color:var(--cs);background:var(--cs-dim);}
+.toggle-btn.active[data-scn="compare"]{border-color:#9C8CF2;color:#B9AEF7;background:#2A2447;}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.dot.ent{background:var(--ent);} .dot.cs{background:var(--cs);} .dot.cmp{background:#9C8CF2;}
+
+.stat-block{display:flex;flex-direction:column;gap:10px;padding-top:6px;border-top:1px solid var(--border-soft);}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;}
+.stat-row .k{font-size:11.5px;color:var(--muted);}
+.stat-row .v{font-size:14px;font-weight:700;font-family:ui-monospace,Menlo,monospace;}
+
+.legend-note{font-size:10.8px;color:var(--muted2);line-height:1.5;padding-top:6px;border-top:1px solid var(--border-soft);}
+
+/* ---------- Main content ---------- */
+.content{flex:1;padding:26px 30px 60px;max-width:1500px;}
+.page-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:10px;}
+.page-header h2{margin:0;font-size:22px;font-weight:700;letter-spacing:-0.3px;}
+.page-header .desc{font-size:12.5px;color:var(--muted);margin-top:4px;max-width:640px;}
+.export-all{padding:9px 14px;border-radius:8px;border:1px solid var(--border);background:var(--panel);
+  color:var(--text);font-size:12.5px;font-weight:600;cursor:pointer;}
+.export-all:hover{border-color:var(--muted2);}
+
+.section-title{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted2);
+  font-weight:700;margin:30px 0 12px;display:flex;align-items:center;gap:10px;}
+.section-title::after{content:"";flex:1;height:1px;background:var(--border-soft);}
+
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;}
+.col-4{grid-column:span 4;} .col-6{grid-column:span 6;} .col-8{grid-column:span 8;} .col-12{grid-column:span 12;}
+@media (max-width:1100px){.col-4,.col-6,.col-8{grid-column:span 12;}}
+
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:16px 16px 14px;
+  display:flex;flex-direction:column;min-height:0;}
+.panel-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;}
+.panel-title{font-size:12.5px;font-weight:700;color:var(--text);}
+.panel-sub{font-size:10.8px;color:var(--muted2);margin-top:2px;}
+.export-btn{flex-shrink:0;width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--panel2);
+  color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;}
+.export-btn:hover{color:var(--ent);border-color:var(--ent);}
+.chart-wrap{position:relative;flex:1;min-height:210px;}
+.chart-wrap canvas{max-width:100%;}
+
+.compare-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width:900px){.compare-cols{grid-template-columns:1fr;}}
+.compare-col-label{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;}
+.compare-col-label.ent{color:var(--ent);} .compare-col-label.cs{color:var(--cs);}
+
+table.data-table{width:100%;border-collapse:collapse;font-size:12px;}
+table.data-table th{text-align:left;color:var(--muted2);font-weight:600;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.5px;padding:6px 8px;border-bottom:1px solid var(--border-soft);}
+table.data-table td{padding:7px 8px;border-bottom:1px solid var(--border-soft);color:var(--text);}
+table.data-table tr:last-child td{border-bottom:none;}
+.pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;}
+.pill.ok{background:rgba(84,209,140,.15);color:var(--ok);}
+.pill.bad{background:rgba(226,99,122,.15);color:var(--bad);}
+
+.heatmap{display:grid;grid-template-columns:44px repeat(24,1fr);gap:2px;font-size:9px;}
+.heatmap .hcell{aspect-ratio:1/1;border-radius:2px;min-height:12px;}
+.heatmap .hlabel{color:var(--muted2);display:flex;align-items:center;font-size:9.5px;}
+.heatmap .hourlabel{color:var(--muted2);text-align:center;font-size:8px;}
+
+.kpi-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:4px;}
+.kpi{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);
+  padding:14px 16px;}
+.kpi .k-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:700;}
+.kpi .k-val{font-size:24px;font-weight:800;margin-top:4px;font-family:ui-monospace,Menlo,monospace;}
+.kpi .k-sub{font-size:10.5px;color:var(--muted2);margin-top:2px;}
+
+footer.foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--border-soft);font-size:10.8px;color:var(--muted2);
+  display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+
+#networkTooltip{position:fixed;pointer-events:none;background:#0F1729;border:1px solid var(--border);
+  border-radius:6px;padding:6px 9px;font-size:11px;color:var(--text);display:none;z-index:50;}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="eyebrow">Phase 2 Extension</div>
+      <h1>Communication Visualization &amp; Analysis</h1>
+      <div class="sub">Selective scenario-based modeling</div>
+    </div>
+
+    <div class="scenario-toggle">
+      <div class="toggle-label">Scenario</div>
+      <button class="toggle-btn active" data-scn="enterprise"><span class="dot ent"></span>Enterprise (Hierarchical)</button>
+      <button class="toggle-btn" data-scn="support"><span class="dot cs"></span>Customer Support</button>
+      <button class="toggle-btn" data-scn="compare"><span class="dot cmp"></span>Compare Both</button>
+    </div>
+
+    <div class="stat-block" id="sidebarStats"></div>
+
+    <div class="legend-note">
+      Dataset generated by the Phase&nbsp;2 rule-based synthetic VoIP session generator, extended per Sec.&nbsp;1
+      characterization findings (see accompanying documentation). All data is synthetic – no real call records.
+    </div>
+  </aside>
+
+  <main class="content" id="content">
+    <div class="page-header">
+      <div>
+        <h2 id="pageTitle">Enterprise Communication – Hierarchical Organization</h2>
+        <div class="desc" id="pageDesc"></div>
+      </div>
+      <button class="export-all" id="exportAllBtn">&#11015; Export all panels</button>
+    </div>
+
+    <div class="kpi-row" id="kpiRow"></div>
+
+    <div id="dashboardBody"></div>
+
+    <footer class="foot">
+      <span>VoIP Communication Analytics – generated dataset explorer</span>
+      <span id="footRight"></span>
+    </footer>
+  </main>
+</div>
+
+<div id="networkTooltip"></div>
+
+<script id="data-enterprise" type="application/json">__ENTERPRISE_DATA__</script>
+<script id="data-support" type="application/json">__SUPPORT_DATA__</script>
+
+<script>
+const ENT_COLOR = "#4FD1C5", CS_COLOR = "#F2A65A", PURPLE="#9C8CF2";
+const OUTCOME_COLORS = {Answered:"#54D18C", Busy:"#F2C245", "No Answer":"#7C8AA5", Rejected:"#E2637A", Failed:"#B04759"};
+const ROLE_COLORS_ENT = {CEO:"#F2A65A", Manager:"#4FD1C5", Employee:"#5C8FD6", External:"#7C8AA5"};
+const ROLE_COLORS_CS = {Manager:"#F2A65A", "Team Lead":"#E2637A", "Customer Support Agent":"#4FD1C5", Customer:"#7C8AA5"};
+
+const DATA = {
+  enterprise: JSON.parse(document.getElementById('data-enterprise').textContent),
+  support: JSON.parse(document.getElementById('data-support').textContent)
+};
+
+Chart.defaults.color = "#8491AC";
+Chart.defaults.borderColor = "#1A2540";
+Chart.defaults.font.family = "-apple-system, Segoe UI, Roboto, sans-serif";
+Chart.defaults.font.size = 11;
+
+let activeCharts = [];
+function trackChart(c){ activeCharts.push(c); return c; }
+function destroyAllCharts(){ activeCharts.forEach(c=>c.destroy()); activeCharts = []; }
+
+// ---------------- Data helpers ----------------
+function hourOf(ts){ return parseInt(ts.substring(11,13),10); }
+function dowOf(ts){ // dataset window starts Monday 2026-07-06
+  const d = new Date(ts); const day = d.getUTCDay(); // 0=Sun
+  return (day+6)%7; // 0=Mon..6=Sun
+}
+const DOW_LABELS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+function countBy(arr, keyFn){
+  const m = new Map();
+  arr.forEach(x=>{ const k = keyFn(x); m.set(k, (m.get(k)||0)+1); });
+  return m;
+}
+function sortedEntries(m){ return Array.from(m.entries()); }
+
+function computeHourly(rows){
+  const arr = new Array(24).fill(0);
+  rows.forEach(r=> arr[hourOf(r["Start Time"])]++ );
+  return arr;
+}
+function computeDOW(rows){
+  const arr = new Array(7).fill(0);
+  rows.forEach(r=> arr[dowOf(r["Start Time"])]++ );
+  return arr;
+}
+function computeHeatmap(rows){
+  const grid = Array.from({length:7},()=>new Array(24).fill(0));
+  rows.forEach(r=>{ grid[dowOf(r["Start Time"])][hourOf(r["Start Time"])]++; });
+  return grid;
+}
+function durationBins(rows){
+  const edges = [0,60,120,180,300,450,600,900,1200,1e9];
+  const labels = ["0-60s","1-2m","2-3m","3-5m","5-7.5m","7.5-10m","10-15m","15-20m","20m+"];
+  const counts = new Array(labels.length).fill(0);
+  rows.filter(r=>r["Call Outcome"]==="Answered").forEach(r=>{
+    const d = +r["Duration"];
+    for(let i=0;i<edges.length-1;i++){ if(d>=edges[i] && d<edges[i+1]){ counts[i]++; break; } }
+  });
+  return {labels, counts};
+}
+function callsPerUserBins(rows){
+  const m = new Map();
+  rows.forEach(r=>{
+    m.set(r["Caller User ID"], (m.get(r["Caller User ID"])||0)+1);
+    m.set(r["Callee User ID"], (m.get(r["Callee User ID"])||0)+1);
+  });
+  const edges = [1,3,6,11,21,41,1e9];
+  const labels = ["1-2","3-5","6-10","11-20","21-40","41+"];
+  const counts = new Array(labels.length).fill(0);
+  m.forEach(v=>{
+    for(let i=0;i<edges.length-1;i++){ if(v>=edges[i] && v<edges[i+1]){ counts[i]++; break; } }
+  });
+  return {labels, counts, totalUsers:m.size};
+}
+function topPairs(rows, n){
+  const m = new Map();
+  rows.forEach(r=>{
+    const a=r["Caller User ID"], b=r["Callee User ID"];
+    const key = [a,b].sort().join("|");
+    if(!m.has(key)) m.set(key, {a,b,count:0,names:[r["Caller ID"],r["Callee ID"]]});
+    m.get(key).count++;
+  });
+  const arr = Array.from(m.values()).sort((x,y)=>y.count-x.count);
+  const repeatPairs = arr.filter(x=>x.count>1).length;
+  const repeatRatio = arr.length ? repeatPairs/arr.length : 0;
+  return {top: arr.slice(0,n), totalPairs: arr.length, repeatRatio};
+}
+function roleActivity(rows, roleField){
+  const m = new Map();
+  rows.forEach(r=>{
+    m.set(r["Caller "+roleField], (m.get(r["Caller "+roleField])||0)+1);
+    m.set(r["Callee "+roleField], (m.get(r["Callee "+roleField])||0)+1);
+  });
+  return m;
+}
+function internalExternalSplit(rows){
+  let ii=0, ie=0;
+  rows.forEach(r=>{
+    if(r["Caller Type"]==="Internal" && r["Callee Type"]==="Internal") ii++; else ie++;
+  });
+  return {ii, ie};
+}
+
+// ---------------- Chart render primitives ----------------
+function barChart(ctx, labels, dataArr, color, horizontal, extra){
+  return trackChart(new Chart(ctx, {
+    type:"bar",
+    data:{labels, datasets:[{data:dataArr, backgroundColor:color, borderRadius:4, maxBarThickness:28}]},
+    options: Object.assign({
+      indexAxis: horizontal ? "y":"x",
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{ x:{grid:{color:"#1A2540"}}, y:{grid:{color:"#1A2540"}} }
+    }, extra||{})
+  }));
+}
+function doughnutChart(ctx, labels, dataArr, colors){
+  return trackChart(new Chart(ctx, {
+    type:"doughnut",
+    data:{labels, datasets:[{data:dataArr, backgroundColor:colors, borderColor:"#121B2E", borderWidth:2}]},
+    options:{responsive:true, maintainAspectRatio:false, cutout:"62%",
+      plugins:{legend:{position:"bottom", labels:{boxWidth:10, padding:10, font:{size:10.5}}}}}
+  }));
+}
+
+function renderHeatmapInto(container, grid, color){
+  container.innerHTML = "";
+  const wrap = document.createElement("div"); wrap.className="heatmap";
+  wrap.appendChild(document.createElement("div"));
+  for(let h=0; h<24; h++){ const l=document.createElement("div"); l.className="hourlabel"; l.textContent = (h%3===0)?h:""; wrap.appendChild(l); }
+  let max=1; grid.forEach(row=>row.forEach(v=>max=Math.max(max,v)));
+  for(let d=0; d<7; d++){
+    const lab=document.createElement("div"); lab.className="hlabel"; lab.textContent=DOW_LABELS[d]; wrap.appendChild(lab);
+    for(let h=0; h<24; h++){
+      const v = grid[d][h];
+      const cell = document.createElement("div"); cell.className="hcell";
+      const alpha = v===0 ? 0.06 : 0.15 + 0.85*(v/max);
+      cell.style.background = hexToRgba(color, alpha);
+      cell.title = `${DOW_LABELS[d]} ${h}:00 \u2013 ${v} call${v===1?"":"s"}`;
+      wrap.appendChild(cell);
+    }
+  }
+  container.appendChild(wrap);
+}
+function hexToRgba(hex, a){
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function renderNetworkInto(container, rows, roleColors, roleField){
+  container.innerHTML = "";
+  const width = container.clientWidth || 480, height = 320;
+  const svg = d3.select(container).append("svg").attr("width",width).attr("height",height);
+  const nodesMap = new Map();
+  const edgesMap = new Map();
+  rows.forEach(r=>{
+    const a=r["Caller User ID"], b=r["Callee User ID"];
+    if(!nodesMap.has(a)) nodesMap.set(a, {id:a, role:r["Caller "+roleField], label:r["Caller ID"], degree:0});
+    if(!nodesMap.has(b)) nodesMap.set(b, {id:b, role:r["Callee "+roleField], label:r["Callee ID"], degree:0});
+    nodesMap.get(a).degree++; nodesMap.get(b).degree++;
+    const key=[a,b].sort().join("|");
+    edgesMap.set(key, (edgesMap.get(key)||0)+1);
+  });
+  const nodes = Array.from(nodesMap.values());
+  const links = Array.from(edgesMap.entries()).map(([k,w])=>{ const [s,t]=k.split("|"); return {source:s,target:t,weight:w}; });
+
+  const sim = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d=>d.id).distance(46).strength(0.25))
+    .force("charge", d3.forceManyBody().strength(-55))
+    .force("center", d3.forceCenter(width/2, height/2))
+    .force("collide", d3.forceCollide(d=>4+Math.sqrt(d.degree)*1.6));
+
+  const link = svg.append("g").selectAll("line").data(links).join("line")
+    .attr("stroke", "#2A3A5C").attr("stroke-width", d=>Math.min(4, 0.6+d.weight*0.4));
+
+  const node = svg.append("g").selectAll("circle").data(nodes).join("circle")
+    .attr("r", d=>3.5+Math.sqrt(d.degree)*1.8)
+    .attr("fill", d=>roleColors[d.role]||"#7C8AA5")
+    .attr("stroke", "#0B1220").attr("stroke-width", 1)
+    .on("mouseenter", (ev,d)=>{
+      const tt = document.getElementById("networkTooltip");
+      tt.style.display="block"; tt.innerHTML = `<b>${d.label}</b><br>${d.role} \u00b7 ${d.degree} connections`;
+    })
+    .on("mousemove", (ev)=>{
+      const tt = document.getElementById("networkTooltip");
+      tt.style.left = (ev.clientX+12)+"px"; tt.style.top=(ev.clientY+12)+"px";
+    })
+    .on("mouseleave", ()=>{ document.getElementById("networkTooltip").style.display="none"; });
+
+  sim.on("tick", ()=>{
+    link.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+    node.attr("cx",d=>d.x).attr("cy",d=>d.y);
+  });
+  for(let i=0;i<120;i++) sim.tick(); // settle immediately (no long animation)
+  link.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+  node.attr("cx",d=>d.x).attr("cy",d=>d.y);
+}
+
+// ---------------- Panel scaffolding ----------------
+function panel(id, title, sub, colSpan, bodyHtml){
+  return `<div class="panel col-${colSpan}" id="${id}">
+    <div class="panel-head">
+      <div><div class="panel-title">${title}</div>${sub?`<div class="panel-sub">${sub}</div>`:""}</div>
+      <button class="export-btn" data-export="${id}" title="Export as PNG">\u2913</button>
+    </div>
+    ${bodyHtml}
+  </div>`;
+}
+function chartPanel(id, title, sub, colSpan, canvasId, height){
+  return panel(id, title, sub, colSpan, `<div class="chart-wrap" style="min-height:${height||210}px"><canvas id="${canvasId}"></canvas></div>`);
+}
+
+// ---------------- Scenario metadata ----------------
+const META = {
+  enterprise: {
+    color: ENT_COLOR, label:"Enterprise (Hierarchical)",
+    title:"Enterprise Communication \u2013 Hierarchical Organization",
+    desc:"CEO \u2192 8 Department Managers \u2192 46 Employees (span of control \u2248 5.75), plus 10 external contacts. Selection is hierarchy-weighted: teammates, upward-to-manager, downward-to-reports, skip-level, cross-department.",
+    roleField:"Role", roleColors: ROLE_COLORS_ENT, categoryField:"Communication Category"
+  },
+  support: {
+    color: CS_COLOR, label:"Customer Support",
+    title:"Customer Support Communication",
+    desc:"1 Support Manager, 4 Team Leads, 30 shift-based Agents (Morning/Afternoon/Night), 25 external customers. Queue-style Customer\u2194Agent assignment with ~10% escalation to Team Leads.",
+    roleField:"Role", roleColors: ROLE_COLORS_CS, categoryField:"Selection Mechanism"
+  }
+};
+
+// ---------------- KPI + Sidebar stats ----------------
+function fmtPct(n){ return (n*100).toFixed(1)+"%"; }
+function computeKPIs(rows){
+  const total = rows.length;
+  const answered = rows.filter(r=>r["Call Outcome"]==="Answered");
+  const answerRate = answered.length/total;
+  const avgDur = answered.reduce((s,r)=>s+(+r["Duration"]),0)/(answered.length||1);
+  const uniqueUsers = new Set(); rows.forEach(r=>{uniqueUsers.add(r["Caller User ID"]); uniqueUsers.add(r["Callee User ID"]);});
+  return {total, answerRate, avgDur, users: uniqueUsers.size};
+}
+
+function renderSidebarStats(scn){
+  const el = document.getElementById("sidebarStats");
+  if(scn==="compare"){
+    const e = computeKPIs(DATA.enterprise), s = computeKPIs(DATA.support);
+    el.innerHTML = `
+      <div class="toggle-label">Snapshot</div>
+      <div class="stat-row"><span class="k">Enterprise sessions</span><span class="v" style="color:${ENT_COLOR}">${e.total}</span></div>
+      <div class="stat-row"><span class="k">Support sessions</span><span class="v" style="color:${CS_COLOR}">${s.total}</span></div>
+      <div class="stat-row"><span class="k">Ent. answer rate</span><span class="v">${fmtPct(e.answerRate)}</span></div>
+      <div class="stat-row"><span class="k">CS answer rate</span><span class="v">${fmtPct(s.answerRate)}</span></div>`;
+  } else {
+    const rows = DATA[scn]; const k = computeKPIs(rows);
+    el.innerHTML = `
+      <div class="toggle-label">Snapshot</div>
+      <div class="stat-row"><span class="k">Sessions</span><span class="v">${k.total}</span></div>
+      <div class="stat-row"><span class="k">Users involved</span><span class="v">${k.users}</span></div>
+      <div class="stat-row"><span class="k">Answer rate</span><span class="v">${fmtPct(k.answerRate)}</span></div>
+      <div class="stat-row"><span class="k">Avg. duration</span><span class="v">${Math.round(k.avgDur)}s</span></div>`;
+  }
+}
+
+function renderKPIRow(scn){
+  const row = document.getElementById("kpiRow");
+  function kpiHTML(label, val, sub){ return `<div class="kpi"><div class="k-label">${label}</div><div class="k-val">${val}</div><div class="k-sub">${sub||""}</div></div>`; }
+  if(scn==="compare"){
+    const e=computeKPIs(DATA.enterprise), s=computeKPIs(DATA.support);
+    row.innerHTML = kpiHTML("Enterprise Sessions", e.total, `${fmtPct(e.answerRate)} answered`) +
+      kpiHTML("Support Sessions", s.total, `${fmtPct(s.answerRate)} answered`) +
+      kpiHTML("Ent. Avg Duration", Math.round(e.avgDur)+"s", "answered calls") +
+      kpiHTML("CS Avg Duration", Math.round(s.avgDur)+"s", "answered calls (AHT)");
+  } else {
+    const rows = DATA[scn]; const k = computeKPIs(rows);
+    const pairs = topPairs(rows, 1000);
+    row.innerHTML = kpiHTML("Total Sessions", k.total) +
+      kpiHTML("Answer Rate", fmtPct(k.answerRate)) +
+      kpiHTML("Avg Duration", Math.round(k.avgDur)+"s", "answered calls") +
+      kpiHTML("Repeat Pair Ratio", fmtPct(pairs.repeatRatio), pairs.totalPairs+" unique pairs");
+  }
+}
+
+// ---------------- Full single-scenario dashboard body ----------------
+function buildSingleBody(scn){
+  const m = META[scn];
+  let html = "";
+
+  html += `<div class="section-title">Temporal Activity</div><div class="grid">`;
+  html += chartPanel(`p-hour-${scn}`, "Calls by Hour of Day", "24-hour distribution, UTC", 6, `c-hour-${scn}`);
+  html += chartPanel(`p-dow-${scn}`, "Calls by Day of Week", "Mon\u2013Sun", 6, `c-dow-${scn}`);
+  html += panel(`p-heat-${scn}`, "Peak / Off-Peak Heatmap", "Darker = higher volume", 12, `<div id="c-heat-${scn}"></div>`);
+  html += `</div>`;
+
+  html += `<div class="section-title">Call Characteristics</div><div class="grid">`;
+  html += chartPanel(`p-dur-${scn}`, "Call Duration Distribution", "Answered calls only", 6, `c-dur-${scn}`);
+  html += chartPanel(`p-freq-${scn}`, "Calls per User", "Distribution across all users", 6, `c-freq-${scn}`);
+  html += `</div>`;
+
+  html += `<div class="section-title">Categories &amp; Outcomes</div><div class="grid">`;
+  html += chartPanel(`p-cat-${scn}`, scn==="enterprise"?"Communication Categories":"Selection Mechanism", "Share of sessions", 6, `c-cat-${scn}`);
+  html += chartPanel(`p-out-${scn}`, "Call Outcomes", "Answered / Busy / No Answer / Rejected / Failed", 6, `c-out-${scn}`);
+  html += `</div>`;
+
+  html += `<div class="section-title">User &amp; Role Activity</div><div class="grid">`;
+  html += chartPanel(`p-role-${scn}`, "Activity by Role", "Sessions involving each role", 6, `c-role-${scn}`);
+  html += chartPanel(`p-dept-${scn}`, "Activity by Department", "Sessions involving each department", 6, `c-dept-${scn}`);
+  html += `</div>`;
+
+  html += `<div class="section-title">Caller\u2013Callee Interactions</div><div class="grid">`;
+  html += panel(`p-pairs-${scn}`, "Most Frequent Pairs", "Top 10 by session count", 6,
+    `<table class="data-table"><thead><tr><th>Caller</th><th>Callee</th><th>Sessions</th></tr></thead><tbody id="t-pairs-${scn}"></tbody></table>`);
+  html += chartPanel(`p-inex-${scn}`, "Internal vs External", "Share of sessions", 6, `c-inex-${scn}`);
+  html += `</div>`;
+
+  html += `<div class="section-title">Communication Network</div><div class="grid">`;
+  html += panel(`p-net-${scn}`, "Caller\u2013Callee Relationship Graph", "Node size = degree \u00b7 color = role \u00b7 hover for detail", 12, `<div id="c-net-${scn}" style="min-height:340px"></div>`);
+  html += `</div>`;
+
+  return html;
+}
+
+function renderSingleCharts(scn){
+  const rows = DATA[scn]; const m = META[scn];
+
+  barChart(document.getElementById(`c-hour-${scn}`), Array.from({length:24},(_,i)=>i+":00"), computeHourly(rows), m.color);
+  barChart(document.getElementById(`c-dow-${scn}`), DOW_LABELS, computeDOW(rows), m.color);
+  renderHeatmapInto(document.getElementById(`c-heat-${scn}`), computeHeatmap(rows), m.color);
+
+  const db = durationBins(rows);
+  barChart(document.getElementById(`c-dur-${scn}`), db.labels, db.counts, m.color);
+  const fb = callsPerUserBins(rows);
+  barChart(document.getElementById(`c-freq-${scn}`), fb.labels, fb.counts, m.color);
+
+  const catField = m.categoryField;
+  const catMap = countBy(rows, r=>r[catField]);
+  const catEntries = sortedEntries(catMap).sort((a,b)=>b[1]-a[1]);
+  doughnutChart(document.getElementById(`c-cat-${scn}`), catEntries.map(e=>e[0]), catEntries.map(e=>e[1]),
+    ["#4FD1C5","#F2A65A","#9C8CF2","#54D18C","#E2637A","#5C8FD6","#F2C245","#B04759","#7C8AA5"]);
+
+  const outOrder = ["Answered","Busy","No Answer","Rejected","Failed"];
+  const outMap = countBy(rows, r=>r["Call Outcome"]);
+  barChart(document.getElementById(`c-out-${scn}`), outOrder, outOrder.map(o=>outMap.get(o)||0), outOrder.map(o=>OUTCOME_COLORS[o]));
+
+  const roleField = "Role";
+  const roleMap = roleActivity(rows, roleField);
+  const roleEntries = sortedEntries(roleMap).filter(e=>e[0]).sort((a,b)=>b[1]-a[1]);
+  barChart(document.getElementById(`c-role-${scn}`), roleEntries.map(e=>e[0]), roleEntries.map(e=>e[1]),
+    roleEntries.map(e=>m.roleColors[e[0]]||"#7C8AA5"), true);
+
+  const deptMap = new Map();
+  rows.forEach(r=>{
+    deptMap.set(r["Caller Dept"], (deptMap.get(r["Caller Dept"])||0)+1);
+    deptMap.set(r["Callee Dept"], (deptMap.get(r["Callee Dept"])||0)+1);
+  });
+  const deptEntries = sortedEntries(deptMap).filter(e=>e[0]).sort((a,b)=>b[1]-a[1]);
+  barChart(document.getElementById(`c-dept-${scn}`), deptEntries.map(e=>e[0]), deptEntries.map(e=>e[1]), m.color, true);
+
+  const tp = topPairs(rows, 10);
+  document.getElementById(`t-pairs-${scn}`).innerHTML = tp.top.map(p=>
+    `<tr><td>${p.names[0]}</td><td>${p.names[1]}</td><td>${p.count}</td></tr>`).join("");
+
+  const ie = internalExternalSplit(rows);
+  doughnutChart(document.getElementById(`c-inex-${scn}`), ["Internal \u2194 Internal","Internal \u2194 External"], [ie.ii, ie.ie], ["#4FD1C5","#F2A65A"]);
+
+  renderNetworkInto(document.getElementById(`c-net-${scn}`), rows, m.roleColors, roleField);
+}
+
+// ---------------- Compare mode ----------------
+function buildCompareBody(){
+  let html = `<div class="section-title">Temporal Activity</div><div class="compare-cols">`;
+  ["enterprise","support"].forEach(scn=>{
+    const m = META[scn];
+    html += `<div><div class="compare-col-label ${scn==='enterprise'?'ent':'cs'}">${m.label}</div><div class="grid">`;
+    html += chartPanel(`p-hour-${scn}`, "Calls by Hour", "", 12, `c-hour-${scn}`, 180);
+    html += chartPanel(`p-out-${scn}`, "Call Outcomes", "", 12, `c-out-${scn}`, 200);
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="section-title">Categories &amp; Structure</div><div class="compare-cols">`;
+  ["enterprise","support"].forEach(scn=>{
+    const m = META[scn];
+    html += `<div><div class="grid">`;
+    html += chartPanel(`p-cat-${scn}`, scn==="enterprise"?"Categories":"Selection Mechanism", "", 12, `c-cat-${scn}`, 200);
+    html += chartPanel(`p-inex-${scn}`, "Internal vs External", "", 12, `c-inex-${scn}`, 200);
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="section-title">Communication Network</div><div class="compare-cols">`;
+  ["enterprise","support"].forEach(scn=>{
+    const m = META[scn];
+    html += `<div><div class="compare-col-label ${scn==='enterprise'?'ent':'cs'}">${m.label}</div>`;
+    html += panel(`p-net-${scn}`, "Relationship Graph", "", 12, `<div id="c-net-${scn}" style="min-height:280px"></div>`);
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  return html;
+}
+function renderCompareCharts(){
+  ["enterprise","support"].forEach(scn=>{
+    const rows = DATA[scn]; const m = META[scn];
+    barChart(document.getElementById(`c-hour-${scn}`), Array.from({length:24},(_,i)=>i), computeHourly(rows), m.color);
+    const outOrder = ["Answered","Busy","No Answer","Rejected","Failed"];
+    const outMap = countBy(rows, r=>r["Call Outcome"]);
+    barChart(document.getElementById(`c-out-${scn}`), outOrder, outOrder.map(o=>outMap.get(o)||0), outOrder.map(o=>OUTCOME_COLORS[o]));
+    const catMap = countBy(rows, r=>r[m.categoryField]);
+    const catEntries = sortedEntries(catMap).sort((a,b)=>b[1]-a[1]);
+    doughnutChart(document.getElementById(`c-cat-${scn}`), catEntries.map(e=>e[0]), catEntries.map(e=>e[1]),
+      ["#4FD1C5","#F2A65A","#9C8CF2","#54D18C","#E2637A","#5C8FD6","#F2C245"]);
+    const ie = internalExternalSplit(rows);
+    doughnutChart(document.getElementById(`c-inex-${scn}`), ["Internal\u2194Internal","Internal\u2194External"], [ie.ii, ie.ie], ["#4FD1C5","#F2A65A"]);
+    renderNetworkInto(document.getElementById(`c-net-${scn}`), rows, m.roleColors, "Role");
+  });
+}
+
+// ---------------- Master render ----------------
+function render(scn){
+  destroyAllCharts();
+  document.querySelectorAll(".toggle-btn").forEach(b=>b.classList.toggle("active", b.dataset.scn===scn));
+  renderSidebarStats(scn);
+  renderKPIRow(scn);
+
+  const body = document.getElementById("dashboardBody");
+  if(scn==="compare"){
+    document.getElementById("pageTitle").textContent = "Enterprise vs. Customer Support \u2013 Scenario Comparison";
+    document.getElementById("pageDesc").textContent = "Side-by-side comparison of temporal, categorical, structural and network characteristics across both generated scenarios.";
+    body.innerHTML = buildCompareBody();
+    renderCompareCharts();
+  } else {
+    const m = META[scn];
+    document.getElementById("pageTitle").textContent = m.title;
+    document.getElementById("pageDesc").textContent = m.desc;
+    body.innerHTML = buildSingleBody(scn);
+    renderSingleCharts(scn);
+  }
+  document.getElementById("footRight").textContent =
+    `Enterprise: ${DATA.enterprise.length} sessions \u00b7 Customer Support: ${DATA.support.length} sessions`;
+}
+
+document.querySelectorAll(".toggle-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=> render(btn.dataset.scn));
+});
+
+document.addEventListener("click", (e)=>{
+  const btn = e.target.closest(".export-btn");
+  if(btn){
+    const panelEl = document.getElementById(btn.dataset.export);
+    html2canvas(panelEl, {backgroundColor:"#121B2E", scale:2}).then(canvas=>{
+      const link = document.createElement("a");
+      link.download = btn.dataset.export + ".png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+  }
+});
+document.getElementById("exportAllBtn").addEventListener("click", ()=>{
+  document.querySelectorAll(".export-btn").forEach((btn,i)=>{
+    setTimeout(()=>btn.click(), i*350);
+  });
+});
+
+render("enterprise");
+</script>
+</body>
+</html>

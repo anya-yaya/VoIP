@@ -1,0 +1,103 @@
+{
+  "metadata": {
+    "name": "Protocol and Codec Assignment Rules",
+    "version": "1.0",
+    "description": "Full signaling/media protocol and codec catalog, assignment strategies, popularity distributions, compatibility rules, and compatibility matrix. Authoritative over Step 2's simplified per-scenario codec_distribution blocks."
+  },
+  "signaling_protocols": [
+    { "id": "SIP", "name": "Session Initiation Protocol", "default_ports": [5060, 5061], "transport": ["UDP", "TCP", "TLS"], "notes": "Dominant/primary protocol across all scenario profiles." },
+    { "id": "H.323", "name": "H.323", "default_ports": [1720], "transport": ["TCP"], "notes": "Legacy ITU-T signaling suite; retained for legacy-infrastructure realism." }
+  ],
+  "media_protocols": [
+    { "id": "RTP", "name": "Real-time Transport Protocol", "encryption": null, "notes": "Baseline unencrypted media transport." },
+    { "id": "SRTP", "name": "Secure RTP", "encryption": "AES", "key_exchange_options": ["SDES-SRTP", "DTLS-SRTP"], "notes": "Requires a resolved key-exchange mechanism whenever assigned." }
+  ],
+  "codecs": [
+    { "id": "G711", "name": "G.711 (PCMU/PCMA)", "type": "narrowband", "bitrate_kbps": 64, "sample_rate_hz": 8000, "status": "current", "typical_use": "PSTN gateways, desk phones" },
+    { "id": "G729", "name": "G.729", "type": "narrowband", "bitrate_kbps": 8, "sample_rate_hz": 8000, "status": "current", "typical_use": "WAN-constrained trunks, high-density agent lines" },
+    { "id": "G722", "name": "G.722", "type": "wideband", "bitrate_kbps": 64, "sample_rate_hz": 16000, "status": "current", "typical_use": "HD voice, conference rooms, clinical consultation" },
+    { "id": "G7231", "name": "G.723.1", "type": "narrowband", "bitrate_kbps": [5.3, 6.3], "sample_rate_hz": 8000, "status": "legacy", "typical_use": "Older low-bandwidth VoIP/videoconferencing links" },
+    { "id": "SILK", "name": "SILK", "type": "wideband_variable", "bitrate_kbps": { "min": 6, "max": 40 }, "sample_rate_hz": [8000, 12000, 16000, 24000], "status": "legacy", "typical_use": "Historically Skype's native codec" },
+    { "id": "OPUS", "name": "Opus", "type": "narrowband_to_fullband_variable", "bitrate_kbps": { "min": 6, "max": 510 }, "sample_rate_hz": [8000, 12000, 16000, 24000, 48000], "status": "current_modern_default", "typical_use": "Softphones, WebRTC, mobile, bandwidth-adaptive links" },
+    { "id": "AMR_NB", "name": "AMR-NB", "type": "narrowband", "bitrate_kbps": { "min": 4.75, "max": 12.2 }, "sample_rate_hz": 8000, "status": "current_mobile", "typical_use": "Cellular/VoLTE narrowband calls, mobile gateways" },
+    { "id": "AMR_WB", "name": "AMR-WB", "type": "wideband", "bitrate_kbps": { "min": 6.6, "max": 23.85 }, "sample_rate_hz": 16000, "status": "current_mobile", "typical_use": "Cellular/VoLTE HD voice" },
+    { "id": "SPEEX", "name": "SPEEX", "type": "narrowband_wideband_ultrawideband_variable", "bitrate_kbps": { "min": 2.15, "max": 44 }, "sample_rate_hz": [8000, 16000, 32000], "status": "deprecated", "typical_use": "Open-source legacy codec, superseded by Opus" },
+    { "id": "ISAC", "name": "iSAC", "type": "wideband_adaptive", "bitrate_kbps": { "min": 10, "max": 32 }, "sample_rate_hz": 16000, "status": "legacy", "typical_use": "Pre-Opus WebRTC deployments" },
+    { "id": "ILBC", "name": "iLBC", "type": "narrowband", "bitrate_kbps": [13.3, 15.2], "sample_rate_hz": 8000, "status": "current", "typical_use": "Packet-loss-robust mobile/VoIP apps" },
+    { "id": "GSM", "name": "GSM 06.10 Full Rate", "type": "narrowband", "bitrate_kbps": 13, "sample_rate_hz": 8000, "status": "legacy", "typical_use": "Legacy mobile-origin/PSTN-gateway calls" },
+    { "id": "CN", "name": "Comfort Noise", "type": "auxiliary", "bitrate_kbps": "negligible", "sample_rate_hz": "matches_paired_codec", "status": "auxiliary_never_standalone", "typical_use": "Synthetic background noise during silence suppression (DTX/VAD)" }
+  ],
+  "codec_assignment_strategies": [
+    {
+      "id": "uniform_distribution",
+      "name": "Uniform Distribution",
+      "description": "Equal selection probability across all codecs in the configured candidate list.",
+      "when_used": "Test/POC datasets, synthetic-noise baselines, or when no realistic device/infrastructure mix is known or desired."
+    },
+    {
+      "id": "weighted_distribution",
+      "name": "Weighted Distribution",
+      "description": "Fixed global weights reflecting general real-world codec popularity, applied regardless of environment.",
+      "when_used": "Default fallback when an environment has no explicit override; generic non-scenario-specific datasets.",
+      "reference": "codec_popularity_baseline"
+    },
+    {
+      "id": "environment_specific_distribution",
+      "name": "Environment-Specific Distribution",
+      "description": "Per-scenario weight tables reflecting that environment's device mix, network conditions, and infrastructure age.",
+      "when_used": "Default and recommended strategy for all six named scenario profiles (Step 2).",
+      "reference": "environment_specific_preferences"
+    }
+  ],
+  "distribution_rules": {
+    "codec_popularity_baseline": {
+      "G711": 0.28, "OPUS": 0.25, "G729": 0.12, "G722": 0.08, "AMR_NB": 0.08,
+      "AMR_WB": 0.06, "ILBC": 0.05, "G7231": 0.02, "GSM": 0.02, "SPEEX": 0.02,
+      "SILK": 0.01, "ISAC": 0.01
+    },
+    "comfort_noise_usage_probability": {
+      "description": "Independent probability (not part of the codec weight sum) that a given call, given DTX/silence-suppression is supported, attaches Comfort Noise alongside its primary codec.",
+      "default": 0.3
+    },
+    "protocol_popularity_baseline": {
+      "signaling": { "SIP": 0.95, "H.323": 0.05 },
+      "media": { "RTP": 0.55, "SRTP": 0.45 }
+    },
+    "environment_specific_preferences": {
+      "codecs": {
+        "enterprise": { "G711": 0.35, "G729": 0.15, "G722": 0.10, "G7231": 0.01, "SILK": 0.01, "OPUS": 0.20, "AMR_NB": 0.02, "AMR_WB": 0.02, "SPEEX": 0.01, "ISAC": 0.01, "ILBC": 0.10, "GSM": 0.02 },
+        "customer_support_scenario": { "G711": 0.35, "G729": 0.25, "G722": 0.02, "G7231": 0.03, "SILK": 0.00, "OPUS": 0.15, "AMR_NB": 0.08, "AMR_WB": 0.03, "SPEEX": 0.01, "ISAC": 0.00, "ILBC": 0.06, "GSM": 0.02 }
+        
+      },
+      "protocols": {
+        "enterprise": { "SIP": 0.95, "H.323": 0.05, "RTP": 0.60, "SRTP": 0.40 },
+        "customer_support_scenario": { "SIP": 1.00, "H.323": 0.00, "RTP": 0.50, "SRTP": 0.50 }
+      }
+    }
+  },
+  "compatibility_rules": [
+    { "id": "srtp_implies_encryption", "rule": "Any call with media_protocol=SRTP must resolve an encryption method (AES) and a key-exchange mechanism (SDES-SRTP or DTLS-SRTP)." },
+    { "id": "codec_must_be_supported", "rule": "Any assigned codec must belong to the codecs list in this document; assignment outside this list is invalid." },
+    { "id": "comfort_noise_never_standalone", "rule": "Comfort Noise may only be attached alongside a primary speech codec when DTX/silence-suppression is modeled; it cannot be the sole codec for a call." },
+    { "id": "h323_forces_rtp", "rule": "If signaling_protocol=H.323, media_protocol is forced to RTP regardless of the environment's SRTP weight, since H.323's native encryption path (H.235) is distinct from SRTP and is out of scope for the default profiles." },
+    { "id": "mobile_codec_context_restriction", "rule": "AMR-NB and AMR-WB should only be assigned when the call's network context is mobile/cellular-gateway-originated, not internal desk-phone segments." },
+    { "id": "bandwidth_constrained_bias", "rule": "Bandwidth-constrained (remote/VPN/WAN) network segments should upweight low-bitrate codecs (G.729, AMR-NB, iLBC, low-bitrate-mode Opus) and downweight high-bitrate codecs (G.711, G.722)." },
+    { "id": "legacy_codec_low_default_weight", "rule": "GSM, G.723.1, SILK, iSAC, and SPEEX receive low baseline weight by default and should only be upweighted for datasets explicitly modeling legacy infrastructure." },
+    { "id": "sample_rate_consistency", "rule": "Codec sample rate must match its stated type (narrowband=8kHz, wideband=16kHz); Opus alone spans 8-48kHz and is resolved per-call based on negotiated mode." }
+  ],
+  "compatibility_matrix": [
+    { "codec_id": "G711", "compatible_signaling": ["SIP", "H.323"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["internal", "any"], "status": "current" },
+    { "codec_id": "G729", "compatible_signaling": ["SIP", "H.323"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["internal_wan_constrained", "customer_support_gateway"], "status": "current" },
+    { "codec_id": "G722", "compatible_signaling": ["SIP", "H.323"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["internal_hd_clinical"], "status": "current" },
+    { "codec_id": "G7231", "compatible_signaling": ["H.323", "SIP"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["legacy_low_bandwidth"], "status": "legacy" },
+    { "codec_id": "SILK", "compatible_signaling": ["SIP"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["legacy_softphone"], "status": "legacy", "notes": "Proprietary lineage; non-standard on classic SIP trunks" },
+    { "codec_id": "OPUS", "compatible_signaling": ["SIP"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["external", "mobile", "remote", "webrtc_softphone"], "status": "current", "notes": "Not natively defined in classic H.323 codec tables" },
+    { "codec_id": "AMR_NB", "compatible_signaling": ["SIP"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["mobile_cellular_gateway"], "status": "current", "notes": "RFC 4867 payload format" },
+    { "codec_id": "AMR_WB", "compatible_signaling": ["SIP"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["mobile_cellular_gateway_hd"], "status": "current", "notes": "RFC 4867 payload format" },
+    { "codec_id": "SPEEX", "compatible_signaling": ["SIP"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["legacy_open_source"], "status": "deprecated" },
+    { "codec_id": "ISAC", "compatible_signaling": ["SIP"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["legacy_webrtc"], "status": "legacy" },
+    { "codec_id": "ILBC", "compatible_signaling": ["SIP", "H.323"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["mobile", "packet_loss_prone"], "status": "current" },
+    { "codec_id": "GSM", "compatible_signaling": ["SIP", "H.323"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["legacy_mobile_origin", "pstn_gateway"], "status": "legacy" },
+    { "codec_id": "CN", "compatible_signaling": ["SIP", "H.323"], "compatible_media": ["RTP", "SRTP"], "preferred_network_context": ["any_paired_with_primary_codec"], "status": "auxiliary_never_standalone" }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "_comment": "Scenario-specific behavior overrides for the Customer Support (contact centre) scenario. This is an OVERRIDE file only -- it supplements the generic config/ tree (categories, patterns, selection, protocol_codec, users, schema) rather than replacing it. Everything not specified here (canonical user/session schema, protocol & codec assignment, outcome determination, timestamps, packet counts, WAV references, validation, export) is still owned by the generic framework. Consumed by src/behavior_customer_support.py.",
+
+  "organization": {
+    "manager_count": 1,
+    "team_lead_count": 4,
+    "_note": "All remaining internal users become Customer Support Agents; all external users become Customers. Actual counts scale with the run config's users target, so the roster grows/shrinks with the requested population size."
+  },
+
+  "role_labels": {
+    "manager": "support_manager",
+    "team_lead": "team_lead",
+    "agent": "customer_support_agent",
+    "customer": "customer"
+  },
+
+  "shifts": {
+    "Morning":   {"start_hour": 7,  "end_hour": 15, "weight": 0.45},
+    "Afternoon": {"start_hour": 13, "end_hour": 21, "weight": 0.45},
+    "Night":     {"start_hour": 21, "end_hour": 7,  "weight": 0.10, "wraps_midnight": true},
+    "_note": "Shift sizing is weighted so on-shift agent coverage is heaviest across the researched 11:00-19:00 contact-centre peak window, with skeleton overnight coverage."
+  },
+
+  "shift_sampling": {
+    "_comment": "Used ONLY to decide which agents are plausibly on shift when pairing a call. The canonical start_timestamp is still produced by the generic engine's Stage 12 from the scenario's traffic_distribution -- this does not override it.",
+    "hour_windows": [
+      {"start_hour": 11, "end_hour": 19, "weight": 3.0},
+      {"start_hour": 12, "end_hour": 13, "weight": 3.4},
+      {"start_hour": 16, "end_hour": 17, "weight": 3.2},
+      {"start_hour": 7,  "end_hour": 11, "weight": 1.6},
+      {"start_hour": 19, "end_hour": 22, "weight": 1.6},
+      {"start_hour": 5,  "end_hour": 7,  "weight": 1.6},
+      {"start_hour": 22, "end_hour": 5,  "weight": 0.3}
+    ]
+  },
+
+  "escalation": {
+    "probability": 0.10,
+    "mechanism": "Agent -> Team Lead"
+  },
+
+  "selection": {
+    "mechanism": "queue_assignment",
+    "agent_pick": "shift_aware_activity_weighted",
+    "caller_direction_split": 0.5,
+    "_note": "0.5 = 50% customer-initiated (inbound), 50% agent-initiated (callback).",
+    "relationship_type_by_mechanism": {
+      "queue_assignment_customer_to_agent": "customer_support_agent",
+      "escalation_agent_to_team_lead": "escalation"
+    }
+  },
+
+  "duration_model": {
+    "type": "lognormal",
+    "target_mean_seconds": 350,
+    "sigma": 0.6,
+    "min_seconds": 60,
+    "max_seconds": 1200,
+    "_source": "Brown, Gans, Mandelbaum et al. (2005, JASA): a full year of real call-by-call bank contact-centre data showed service times are well-fit by a lognormal distribution -- not the exponential assumed by classic Erlang-C -- with type-dependent means of 115-401s."
+  },
+
+  "ring_duration_model": {
+    "type": "exponential",
+    "mean_seconds": 8,
+    "min_seconds": 1,
+    "max_seconds": 40,
+    "non_answer_span_seconds": {
+      "busy": 3,
+      "rejected": 4,
+      "failed": 8
+    },
+    "_source": "Behan et al.: real provider average ring time ~10.0s, exponentially distributed. Note that 'no_answer' is NOT drawn from this model -- it is a genuine queue abandonment and uses the bimodal model below."
+  },
+
+  "abandonment": {
+    "_comment": "Applies to the 'no_answer' outcome: the caller waited in queue and hung up. Session span is bimodal, not a flat range.",
+    "early_hangup":       {"weight": 0.35, "min_seconds": 3,  "max_seconds": 15},
+    "second_peak_hangup": {"weight": 0.65, "min_seconds": 45, "max_seconds": 75},
+    "_source": "Brown et al. (2005, JASA): the empirical hazard rate of 'time willing to wait' at a real bank contact centre has two distinct peaks -- one within the first few seconds (callers who realise they are queued and hang up immediately), and a second around 60s, coinciding with the queue replaying its 'please wait' announcement."
+  }
+}

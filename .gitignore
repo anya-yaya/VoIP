@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+generated_dataset/*.json
+generated_dataset/*.csv
+!generated_dataset/.gitkeep
+validation_report.md
+.DS_Store

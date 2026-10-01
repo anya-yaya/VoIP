@@ -1,0 +1,88 @@
+{
+  "_comment": "Scenario-specific behavior overrides for the Enterprise (hierarchical organization) scenario. This is an OVERRIDE file only -- it supplements the generic config/ tree (categories, patterns, selection, protocol_codec, users, schema) rather than replacing it. Everything not specified here (canonical user/session schema, protocol & codec assignment, outcome determination, timestamps, packet counts, WAV references, validation, export) is still owned by the generic framework. Consumed by src/behavior_enterprise.py.",
+
+  "organization": {
+    "departments": ["Sales", "Support", "Engineering", "Finance", "HR", "Operations", "IT", "Marketing"],
+    "executive_department": "Executive",
+    "employees_per_manager": {
+      "target": 6,
+      "jitter_options": [-1, 0, 0, 1],
+      "_source": "Gallup meta-analysis of 200,000+ manager-led teams: median team size 5-6; effective knowledge-work span of control 5-8."
+    }
+  },
+
+  "role_labels": {
+    "ceo": "executive",
+    "manager": "manager",
+    "employee": "employee"
+  },
+
+  "selection": {
+    "_comment": "Hierarchy-aware caller/callee selection weights, keyed by the CALLER's own level in the reporting tree. Mechanisms with no available candidates are dropped and the remainder renormalized at runtime.",
+    "weights_by_caller_level": {
+      "Employee": {
+        "team_member_same_manager": 0.55,
+        "manager_upward": 0.25,
+        "cross_department_employee": 0.10,
+        "skip_level_ceo": 0.05,
+        "external_contact": 0.05
+      },
+      "Manager": {
+        "direct_report_downward": 0.45,
+        "peer_manager_cross_department": 0.30,
+        "ceo_upward": 0.15,
+        "external_contact": 0.10
+      },
+      "CEO": {
+        "manager_downward": 0.75,
+        "external_contact": 0.25
+      }
+    },
+    "_source": "Employee weights reflect Wen et al.'s Enron 4-flow study: horizontal (teammate) and vertical (manager) communication dominate; diagonal (cross-department, non-reporting-line) flow is comparatively rare -- hence team_member 0.55 vs cross_department 0.10.",
+
+    "relationship_type_by_mechanism": {
+      "team_member_same_manager": "team_member",
+      "manager_upward": "manager_employee",
+      "direct_report_downward": "manager_employee",
+      "peer_manager_cross_department": "cross_department_peer",
+      "cross_department_employee": "cross_department_peer",
+      "skip_level_ceo": "skip_level",
+      "ceo_upward": "manager_employee",
+      "manager_downward": "manager_employee",
+      "external_contact": "internal_external"
+    }
+  },
+
+  "duration_model": {
+    "type": "pareto_type2",
+    "shape_alpha": 1.5,
+    "min_seconds": 8,
+    "target_mean_seconds": {
+      "business_communication": 260,
+      "administrative_communication": 90,
+      "personal_communication": 130,
+      "emergency_communication": 90
+    },
+    "cap_seconds": {
+      "business_communication": 1800,
+      "administrative_communication": 600,
+      "personal_communication": 900,
+      "emergency_communication": 500
+    },
+    "_source": "de Mattos et al.: real VoIP carrier call-holding time is well-fit by a Pareto Type 2 (Lomax) distribution -- mean 143.7s, SD 490.4s across 10,210 sessions. Most calls are short, a few very long; a uniform range cannot reproduce this variance. Categories not listed here fall back to the generic engine's uniform draw over the category's own typical_duration_seconds band."
+  },
+
+  "ring_duration_model": {
+    "type": "exponential",
+    "mean_seconds": 8,
+    "min_seconds": 1,
+    "max_seconds": 40,
+    "non_answer_span_seconds": {
+      "busy": 3,
+      "rejected": 4,
+      "failed": 6,
+      "no_answer": 28
+    },
+    "_source": "The IETF SIP CDR field-definition work treats ring time (INVITE to ACK) as a field distinct from call duration; Behan et al. measured real average ring time ~10.0s, exponentially distributed."
+  }
+}

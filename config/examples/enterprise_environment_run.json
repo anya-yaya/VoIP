@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "run_metadata": {
+    "name": "Enterprise Focused Sample",
+    "description": "A single-environment run using the Enterprise scenario as-is, with no overrides — demonstrates the minimal-config path.",
+    "created_at": "2026-09-17T00:00:00"
+  },
+  "dataset_size": {
+    "mode": "single_environment",
+    "record_count": 500,
+    "random_seed": 42
+  },
+  "environments": [
+    {
+      "environment_id": "enterprise",
+      "base_scenario": "enterprise"
+    }
+  ],
+  "output": {
+    "formats": ["json", "csv"],
+    "output_directory": "generated_dataset/enterprise"
+  }
+}

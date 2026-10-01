@@ -1,0 +1,142 @@
+{
+  "metadata": {
+    "name": "Caller-Callee Selection Rules",
+    "version": "1.0",
+    "description": "Selection mechanisms, relationship types, and their environment-specific weightings, consumed after category/pattern resolution to pick the actual participants for a call."
+  },
+  "selection_mechanisms": [
+    {
+      "id": "random_selection",
+      "name": "Random Selection",
+      "description": "Callee drawn uniformly from the entire eligible user population, independent of prior relationship.",
+      "inputs": ["user_population"]
+    },
+    {
+      "id": "frequent_contact_selection",
+      "name": "Frequent Contact Selection",
+      "description": "Callee drawn from the caller's frequent-contacts set, rank-weighted (e.g. Zipfian) toward top contacts.",
+      "inputs": ["frequent_callers_per_user", "pairwise_frequency_model"]
+    },
+    {
+      "id": "department_based_selection",
+      "name": "Department-Based Selection",
+      "description": "Callee drawn from users within the caller's own department/team.",
+      "inputs": ["organizational_structure.departments", "intra_department_call_ratio"]
+    },
+    {
+      "id": "cross_department_selection",
+      "name": "Cross-Department Selection",
+      "description": "Callee drawn from a different department, weighted by an inter-department affinity matrix.",
+      "inputs": ["organizational_structure.cross_department_matrix"]
+    },
+    {
+      "id": "external_communication",
+      "name": "External Communication",
+      "description": "Caller or callee drawn from an external pool (customers, vendors, clients, agencies) outside the internal user population.",
+      "inputs": ["network_configuration.external_ip_ranges", "remote_access_ratio", "external_role_tags"]
+    },
+    {
+      "id": "community_based_selection",
+      "name": "Community-Based Selection",
+      "description": "Callee drawn from the caller's community with probability p_intra; from a different community with probability (1 - p_intra). Communities may be organizational or social.",
+      "inputs": ["community_basis", "p_intra_default"],
+      "parameters": { "p_intra_default": 0.8, "p_inter_default": 0.2 }
+    }
+  ],
+  "relationship_types": [
+    {
+      "id": "frequent_contacts",
+      "name": "Frequent Contacts",
+      "selection_probability_baseline": 0.35,
+      "typical_communication_frequency": { "calls_per_pair_per_week": { "min": 3, "max": 10 } },
+      "typical_communication_duration_seconds": { "min": 60, "max": 600 },
+      "produced_by_mechanisms": ["frequent_contact_selection", "community_based_selection"]
+    },
+    {
+      "id": "team_members",
+      "name": "Team Members",
+      "selection_probability_baseline": 0.25,
+      "typical_communication_frequency": { "calls_per_pair_per_week": { "min": 2, "max": 6 } },
+      "typical_communication_duration_seconds": { "min": 60, "max": 300 },
+      "produced_by_mechanisms": ["department_based_selection", "community_based_selection"]
+    },
+    {
+      "id": "manager_employee",
+      "name": "Manager\u2013Employee",
+      "selection_probability_baseline": 0.10,
+      "typical_communication_frequency": { "calls_per_pair_per_week": { "min": 1, "max": 3 }, "notes": "spikes around deadlines/incidents" },
+      "typical_communication_duration_seconds": { "min": 120, "max": 600 },
+      "produced_by_mechanisms": ["cross_department_selection", "department_based_selection"]
+    },
+    {
+      "id": "customer_support_agent",
+      "name": "Customer\u2013Support Agent",
+      "selection_probability_baseline": 0.15,
+      "typical_communication_frequency": { "calls_per_pair_total": { "min": 1, "max": 3 }, "notes": "mostly one-time; follow-up for unresolved cases" },
+      "typical_communication_duration_seconds": { "min": 120, "max": 1200 },
+      "produced_by_mechanisms": ["external_communication"]
+    },
+    {
+      "id": "internal_external",
+      "name": "Internal\u2013External",
+      "selection_probability_baseline": 0.10,
+      "typical_communication_frequency": { "calls_per_pair_per_week": { "min": 0.5, "max": 2 } },
+      "typical_communication_duration_seconds": { "min": 180, "max": 900 },
+      "produced_by_mechanisms": ["external_communication"]
+    },
+    {
+      "id": "random_contacts",
+      "name": "Random Contacts",
+      "selection_probability_baseline": 0.05,
+      "typical_communication_frequency": { "calls_per_pair_total": { "min": 1, "max": 1 }, "notes": "no repeat" },
+      "typical_communication_duration_seconds": { "min": 30, "max": 300 },
+      "produced_by_mechanisms": ["random_selection"]
+    }
+  ],
+  "mechanism_relationship_map": {
+    "random_selection": ["random_contacts"],
+    "frequent_contact_selection": ["frequent_contacts"],
+    "department_based_selection": ["team_members"],
+    "cross_department_selection": ["manager_employee", "frequent_contacts"],
+    "external_communication": ["customer_support_agent", "internal_external"],
+    "community_based_selection": ["frequent_contacts", "team_members"]
+  },
+  "environment_overrides": {
+    "enterprise": {
+      "mechanism_weights": {
+        "random_selection": 0.05,
+        "frequent_contact_selection": 0.35,
+        "department_based_selection": 0.30,
+        "cross_department_selection": 0.15,
+        "external_communication": 0.10,
+        "community_based_selection": 0.05
+      },
+      "relationship_type_mix": {
+        "frequent_contacts": 0.35,
+        "team_members": 0.30,
+        "manager_employee": 0.12,
+        "customer_support_agent": 0.03,
+        "internal_external": 0.10,
+        "random_contacts": 0.10
+      }
+    },
+    "customer_support_scenario": {
+      "mechanism_weights": {
+        "random_selection": 0.02,
+        "frequent_contact_selection": 0.08,
+        "department_based_selection": 0.05,
+        "cross_department_selection": 0.05,
+        "external_communication": 0.78,
+        "community_based_selection": 0.02
+      },
+      "relationship_type_mix": {
+        "frequent_contacts": 0.05,
+        "team_members": 0.05,
+        "manager_employee": 0.03,
+        "customer_support_agent": 0.82,
+        "internal_external": 0.03,
+        "random_contacts": 0.02
+      }
+    }
+  }
+}

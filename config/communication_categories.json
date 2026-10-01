@@ -1,0 +1,141 @@
+{
+  "metadata": {
+    "name": "Communication Category Definitions",
+    "version": "1.0",
+    "description": "Five core communication categories consumed by the generator to shape per-call duration, timing, outcome, and protocol/codec selection."
+  },
+  "categories": [
+    {
+      "id": "business_communication",
+      "name": "Business Communication",
+      "description": "Task-oriented professional communication supporting day-to-day operations: project coordination, meetings-by-phone, status updates, client/vendor calls, cross-department discussions.",
+      "typical_duration_seconds": { "min": 60, "max": 900, "mean": 180 },
+      "typical_frequency": { "band": "medium_high", "calls_per_active_user_per_day": { "min": 5, "max": 15 } },
+      "typical_participants": ["peer_to_peer", "manager_to_report", "cross_department", "external_client_vendor"],
+      "typical_time_of_day": { "window": "business_hours", "start": 9, "end": 17, "shape": "bimodal" },
+      "typical_call_outcome_distribution": {
+        "answered_probability": 0.85,
+        "busy_probability": 0.03,
+        "no_answer_probability": 0.08,
+        "rejected_probability": 0.02,
+        "failed_probability": 0.02
+      },
+      "typical_protocol_preferences": {
+        "signaling": [{ "protocol": "SIP", "weight": 1.0 }],
+        "media": [{ "protocol": "RTP", "weight": 0.6 }, { "protocol": "SRTP", "weight": 0.4 }]
+      },
+      "typical_codec_preferences": [
+        { "name": "G.711", "weight": 0.55 },
+        { "name": "G.729", "weight": 0.2 },
+        { "name": "Opus", "weight": 0.25 }
+      ],
+      "relative_occurrence_probability_baseline": 0.45
+    },
+    {
+      "id": "customer_support",
+      "name": "Customer Support",
+      "description": "Service interactions between an external party (customer, patient, student, citizen) and support staff, including agent-to-specialist escalation.",
+      "typical_duration_seconds": { "min": 120, "max": 1200, "mean": 300 },
+      "typical_frequency": { "band": "high_agent_side_low_requester_side", "calls_per_active_user_per_day": { "min": 30, "max": 80 } },
+      "typical_participants": ["requester_to_agent", "agent_to_specialist", "agent_to_supervisor"],
+      "typical_time_of_day": { "window": "extended_or_24x7", "shape": "bimodal_evening_skew" },
+      "typical_call_outcome_distribution": {
+        "answered_probability": 0.62,
+        "busy_probability": 0.07,
+        "no_answer_probability": 0.20,
+        "rejected_probability": 0.05,
+        "failed_probability": 0.06
+      },
+      "typical_protocol_preferences": {
+        "signaling": [{ "protocol": "SIP", "weight": 1.0 }],
+        "media": [{ "protocol": "RTP", "weight": 0.5 }, { "protocol": "SRTP", "weight": 0.5 }]
+      },
+      "typical_codec_preferences": [
+        { "name": "G.711", "weight": 0.5 },
+        { "name": "G.729", "weight": 0.3 },
+        { "name": "Opus", "weight": 0.2 }
+      ],
+      "relative_occurrence_probability_baseline": 0.20
+    },
+    {
+      "id": "administrative_communication",
+      "name": "Administrative Communication",
+      "description": "Short, transactional, non-urgent internal coordination: scheduling, approvals, HR/logistics queries, records/registrar-type requests.",
+      "typical_duration_seconds": { "min": 30, "max": 300, "mean": 90 },
+      "typical_frequency": { "band": "low_medium", "calls_per_active_user_per_day": { "min": 1, "max": 4 } },
+      "typical_participants": ["admin_staff_to_any_role", "requester_to_back_office"],
+      "typical_time_of_day": { "window": "business_hours", "start": 10, "end": 15, "shape": "single_peak" },
+      "typical_call_outcome_distribution": {
+        "answered_probability": 0.75,
+        "busy_probability": 0.05,
+        "no_answer_probability": 0.14,
+        "rejected_probability": 0.02,
+        "failed_probability": 0.04
+      },
+      "typical_protocol_preferences": {
+        "signaling": [{ "protocol": "SIP", "weight": 1.0 }],
+        "media": [{ "protocol": "RTP", "weight": 0.85 }, { "protocol": "SRTP", "weight": 0.15 }]
+      },
+      "typical_codec_preferences": [
+        { "name": "G.711", "weight": 0.8 },
+        { "name": "Opus", "weight": 0.2 }
+      ],
+      "relative_occurrence_probability_baseline": 0.15
+    },
+    {
+      "id": "emergency_communication",
+      "name": "Emergency Communication",
+      "description": "Urgent, safety- or mission-critical calls requiring immediate response: incident reporting, dispatch coordination, crisis escalation, clinical emergencies.",
+      "typical_duration_seconds": { "min": 15, "max": 600, "mean": 120, "shape": "bimodal_short_intake_long_coordination" },
+      "typical_frequency": { "band": "very_low_baseline_bursty", "calls_per_active_user_per_day": { "min": 0, "max": 0.5 } },
+      "typical_participants": ["public_to_dispatcher", "dispatcher_to_field_responder", "inter_agency_or_clinical_team"],
+      "typical_time_of_day": { "window": "24x7", "shape": "uniform_event_triggered" },
+      "typical_call_outcome_distribution": {
+        "answered_probability": 0.97,
+        "busy_probability": 0.005,
+        "no_answer_probability": 0.01,
+        "rejected_probability": 0.0,
+        "failed_probability": 0.015
+      },
+      "typical_protocol_preferences": {
+        "signaling": [{ "protocol": "SIP", "weight": 1.0 }],
+        "media": [{ "protocol": "RTP", "weight": 0.1 }, { "protocol": "SRTP", "weight": 0.9 }]
+      },
+      "typical_codec_preferences": [
+        { "name": "G.711", "weight": 0.4 },
+        { "name": "G.722", "weight": 0.2 },
+        { "name": "Opus", "weight": 0.4 }
+      ],
+      "relative_occurrence_probability_baseline": 0.05
+    },
+    {
+      "id": "personal_communication",
+      "name": "Personal Communication",
+      "description": "Informal, non-business communication between individuals conducted over the same infrastructure — personal calls during breaks, family/friend contact on organizational or personal VoIP lines.",
+      "typical_duration_seconds": { "min": 60, "max": 1800, "mean": 300 },
+      "typical_frequency": { "band": "low_medium", "calls_per_active_user_per_day": { "min": 1, "max": 3 } },
+      "typical_participants": ["peer_individual_any_role", "family_or_friend"],
+      "typical_time_of_day": { "window": "evenings_weekends_breaks", "shape": "flat_with_evening_weekend_skew" },
+      "typical_call_outcome_distribution": {
+        "answered_probability": 0.70,
+        "busy_probability": 0.05,
+        "no_answer_probability": 0.15,
+        "rejected_probability": 0.05,
+        "failed_probability": 0.05
+      },
+      "typical_protocol_preferences": {
+        "signaling": [{ "protocol": "SIP", "weight": 1.0 }],
+        "media": [{ "protocol": "RTP", "weight": 0.7 }, { "protocol": "SRTP", "weight": 0.3 }]
+      },
+      "typical_codec_preferences": [
+        { "name": "Opus", "weight": 0.6 },
+        { "name": "G.711", "weight": 0.4 }
+      ],
+      "relative_occurrence_probability_baseline": 0.15
+    }
+  ],
+  "category_mix_by_environment": {
+    "enterprise": { "business_communication": 0.65, "customer_support": 0.03, "administrative_communication": 0.15, "emergency_communication": 0.02, "personal_communication": 0.15 },
+    "customer_support_scenario": { "business_communication": 0.05, "customer_support": 0.85, "administrative_communication": 0.08, "emergency_communication": 0.01, "personal_communication": 0.01 }
+  }
+}

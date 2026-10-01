@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "run_metadata": {
+    "name": "Customer Support Center Focused Sample",
+    "description": "A single-environment run using the Customer Support Center scenario as-is, with no overrides — demonstrates the minimal-config path.",
+    "created_at": "2026-09-17T00:00:00"
+  },
+  "dataset_size": {
+    "mode": "single_environment",
+    "record_count": 500,
+    "random_seed": 42
+  },
+  "environments": [
+    {
+      "environment_id": "customer_support_center",
+      "base_scenario": "customer_support_scenario"
+    }
+  ],
+  "output": {
+    "formats": ["json", "csv"],
+    "output_directory": "generated_dataset/customer_support_center"
+  }
+}

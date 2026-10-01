@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "name": "Custom Environment",
+    "description": "Blank template — override any field. Start by copying a scenario from config/scenarios/ if closer to your target, or fill this in from scratch.",
+    "base_scenario": "custom",
+    "version": "1.0"
+  },
+  "observation_period": {
+    "start_datetime": "2026-01-01T00:00:00",
+    "end_datetime": "2026-01-02T00:00:00",
+    "duration_preset": "single_day",
+    "timezone": "UTC",
+    "granularity": "second",
+    "include_holidays": false,
+    "holiday_calendar": "none"
+  },
+  "communication_scale": {
+    "num_users": 100,
+    "num_communication_sessions": "derived",
+    "avg_calls_per_user_per_day": 5,
+    "max_calls_per_user_per_day": 20,
+    "active_user_percentage": 0.7,
+    "frequent_callers_per_user": { "min": 2, "max": 8 },
+    "pairwise_frequency_model": { "distribution": "zipfian", "zipf_exponent": 1.2 },
+    "inactive_user_behavior": "minimal_calls"
+  },
+  "traffic_distribution": {
+    "peak_hours": [
+      { "start": 9, "end": 11, "weight_multiplier": 2.0 }
+    ],
+    "off_peak_hours": [
+      { "start": 0, "end": 6, "weight_multiplier": 0.1 }
+    ],
+    "weekday_weekend_ratio": 5.0,
+    "daily_weight_profile": [1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.1],
+    "burst_periods": [],
+    "intraday_curve_shape": "bimodal"
+  },
+  "call_outcome_distribution": {
+    "answered_probability": 0.8,
+    "busy_probability": 0.05,
+    "no_answer_probability": 0.1,
+    "rejected_probability": 0.03,
+    "failed_probability": 0.02,
+    "outcome_by_category": {}
+  },
+  "organizational_structure": {
+    "structure_type": "flat",
+    "departments": [
+      { "id": "general", "name": "General", "size": 100, "communication_affinity": 0.5 }
+    ],
+    "roles": [
+      { "id": "member", "name": "Member", "department": "general", "seniority_level": "n/a", "call_privilege_tier": "standard" }
+    ],
+    "reporting_lines": [],
+    "intra_department_call_ratio": 0.6,
+    "shift_pattern": null
+  },
+  "network_configuration": {
+    "internal_ip_ranges": ["10.0.0.0/16"],
+    "external_ip_ranges": ["0.0.0.0/0"],
+    "nat_enabled": true,
+    "network_segments": [],
+    "remote_access_ratio": 0.1
+  },
+  "protocol_configuration": {
+    "signaling_protocols": [
+      { "protocol": "SIP", "weight": 1.0 },
+      { "protocol": "H.323", "weight": 0.0 }
+    ],
+    "media_protocols": [
+      { "protocol": "RTP", "weight": 0.7 },
+      { "protocol": "SRTP", "weight": 0.3 }
+    ],
+    "sip_port_range": { "min": 5060, "max": 5061 },
+    "rtp_port_range": { "min": 16384, "max": 32767 },
+    "encryption_ratio": 0.3
+  },
+  "codec_distribution": {
+    "codecs": [
+      { "name": "G.711", "weight": 0.6, "bitrate_kbps": 64, "sample_rate_hz": 8000, "typical_use": "general voice" },
+      { "name": "Opus", "weight": 0.4, "bitrate_kbps": 24, "sample_rate_hz": 48000, "typical_use": "softphone/mobile" }
+    ]
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "metadata": {
+    "name": "Communication Pattern Profiles",
+    "version": "1.0",
+    "description": "Behavioral pattern parameters per communication category: frequency, duration, temporal placement, interaction/community structure, and outcome. Consumed after category assignment during session/event generation."
+  },
+  "shared_definitions": {
+    "call_frequency_bands": {
+      "very_low": { "calls_per_active_user_per_day": { "min": 0, "max": 0.5 } },
+      "low": { "calls_per_active_user_per_day": { "min": 0.5, "max": 3 } },
+      "medium": { "calls_per_active_user_per_day": { "min": 3, "max": 8 } },
+      "high": { "calls_per_active_user_per_day": { "min": 8, "max": null } }
+    },
+    "duration_bands": {
+      "short": { "seconds": { "min": 0, "max": 60 } },
+      "medium": { "seconds": { "min": 60, "max": 300 } },
+      "long": { "seconds": { "min": 300, "max": null } }
+    }
+  },
+  "patterns": [
+    {
+      "category_id": "business_communication",
+      "call_frequency": { "band": "high", "calls_per_active_user_per_day": { "min": 8, "max": 15 } },
+      "duration_characteristics": { "band": "medium", "tail_band": "long", "seconds": { "min": 60, "max": 900 } },
+      "temporal_characteristics": {
+        "window_type": "business_hours_only",
+        "business_hours": { "start": 9, "end": 17 },
+        "hour_of_day_distribution": "bimodal",
+        "hour_of_day_peaks": [{ "start": 9, "end": 11 }, { "start": 14, "end": 16 }],
+        "day_of_week_distribution": "weekday_concentrated",
+        "weekday_weekend_ratio": 6.5,
+        "burst_events": [{ "trigger": "month_end_reporting", "multiplier": 1.6 }],
+        "periodic_events": [],
+        "response_call_behavior": { "return_call_probability": 0.35, "return_call_delay_seconds": { "min": 300, "max": 1800 } },
+        "escalation_behavior": { "escalation_probability": 0.25, "max_escalation_attempts": 2, "escalation_interval_seconds": { "min": 120, "max": 600 } }
+      },
+      "interaction_characteristics": {
+        "interaction_type": { "in_team": "frequent_repeat", "cross_department": "occasional" },
+        "repeat_caller_callee_probability": { "in_team": 0.7, "cross_department": 0.3 },
+        "contact_persistence": { "in_team": "high", "cross_department": "medium" },
+        "community_based": true,
+        "community_basis": "department_and_reporting_line"
+      },
+      "call_outcome_characteristics": {
+        "answered_probability": 0.85,
+        "busy_probability": 0.03,
+        "no_answer_probability": 0.08,
+        "rejected_probability": 0.02,
+        "failed_probability": 0.02
+      }
+    },
+    {
+      "category_id": "customer_support",
+      "call_frequency": {
+        "band_agent_side": "high", "calls_per_active_user_per_day_agent": { "min": 30, "max": 80 },
+        "band_requester_side": "very_low", "calls_per_active_user_per_day_requester": { "min": 0, "max": 0.5 }
+      },
+      "duration_characteristics": { "band": "medium", "tail_band": "long", "seconds": { "min": 120, "max": 1200 } },
+      "temporal_characteristics": {
+        "window_type": "extended_hours_or_24x7",
+        "hour_of_day_distribution": "bimodal_evening_skew",
+        "hour_of_day_peaks": [{ "start": 9, "end": 12 }, { "start": 17, "end": 20 }],
+        "day_of_week_distribution": "mild_weekday_skew",
+        "weekday_weekend_ratio": 1.6,
+        "burst_events": [
+          { "trigger": "product_incident", "multiplier": 4.0, "probability": 0.1 },
+          { "trigger": "billing_cycle_start", "multiplier": 1.8, "probability": 0.8 }
+        ],
+        "periodic_events": [],
+        "response_call_behavior": { "return_call_probability_requester": 0.1, "return_call_probability_supervisor_callback": 0.5, "return_call_delay_seconds": { "min": 3600, "max": 86400 } },
+        "escalation_behavior": { "escalation_probability": 0.4, "max_escalation_attempts": 3, "escalation_interval_seconds": { "min": 60, "max": 300 } }
+      },
+      "interaction_characteristics": {
+        "interaction_type": { "requester_agent": "one_time", "agent_specialist": "occasional" },
+        "repeat_caller_callee_probability": { "requester_agent": 0.1, "agent_escalation_tier": 0.6 },
+        "contact_persistence": { "requester_agent": "low", "agent_escalation_tier": "high" },
+        "community_based": true,
+        "community_basis": "support_tier"
+      },
+      "call_outcome_characteristics": {
+        "answered_probability": 0.62,
+        "busy_probability": 0.07,
+        "no_answer_probability": 0.20,
+        "rejected_probability": 0.05,
+        "failed_probability": 0.06
+      }
+    },
+    {
+      "category_id": "administrative_communication",
+      "call_frequency": { "band": "low_medium", "calls_per_active_user_per_day": { "min": 1, "max": 4 } },
+      "duration_characteristics": { "band": "short", "seconds": { "min": 30, "max": 120 } },
+      "temporal_characteristics": {
+        "window_type": "business_hours_only",
+        "business_hours": { "start": 9, "end": 17 },
+        "hour_of_day_distribution": "single_peak",
+        "hour_of_day_peaks": [{ "start": 10, "end": 15 }],
+        "day_of_week_distribution": "weekday_concentrated",
+        "weekday_weekend_ratio": 8.0,
+        "burst_events": [],
+        "periodic_events": [],
+        "response_call_behavior": { "return_call_probability": 0.2, "return_call_delay_seconds": { "min": 900, "max": 3600 } },
+        "escalation_behavior": { "escalation_probability": 0.1, "max_escalation_attempts": 2, "escalation_interval_seconds": { "min": 300, "max": 900 } }
+      },
+      "interaction_characteristics": {
+        "interaction_type": "occasional",
+        "repeat_caller_callee_probability": 0.25,
+        "contact_persistence": "low_medium",
+        "community_based": true,
+        "community_basis": "back_office_function"
+      },
+      "call_outcome_characteristics": {
+        "answered_probability": 0.75,
+        "busy_probability": 0.05,
+        "no_answer_probability": 0.14,
+        "rejected_probability": 0.02,
+        "failed_probability": 0.04
+      }
+    },
+    {
+      "category_id": "emergency_communication",
+      "call_frequency": { "band": "very_low_baseline_bursty", "calls_per_active_user_per_day": { "min": 0, "max": 0.5 } },
+      "duration_characteristics": { "band": "bimodal_short_and_long", "short_seconds": { "min": 15, "max": 60 }, "long_seconds": { "min": 120, "max": 600 } },
+      "temporal_characteristics": {
+        "window_type": "24x7_uniform",
+        "hour_of_day_distribution": "uniform_event_triggered",
+        "day_of_week_distribution": "uniform",
+        "weekday_weekend_ratio": 1.0,
+        "burst_events": [
+          { "trigger": "major_incident", "multiplier": 5.0, "probability": 0.15 },
+          { "trigger": "severe_weather_event", "multiplier": 3.0, "probability": 0.05 }
+        ],
+        "periodic_events": [
+          { "trigger": "shift_handover", "occurs": "at_scheduled_shift_boundaries", "multiplier": 2.5 }
+        ],
+        "response_call_behavior": { "return_call_probability": 0.8, "return_call_delay_seconds": { "min": 30, "max": 300 } },
+        "escalation_behavior": { "escalation_probability": 0.6, "max_escalation_attempts": 5, "escalation_interval_seconds": { "min": 30, "max": 90 } }
+      },
+      "interaction_characteristics": {
+        "interaction_type": { "public_facing": "one_time", "operational_leg": "frequent_repeat" },
+        "repeat_caller_callee_probability": { "public_facing": 0.05, "operational_leg": 0.75 },
+        "contact_persistence": { "public_facing": "low", "operational_leg": "high" },
+        "community_based": true,
+        "community_basis": "shift_team_or_active_incident"
+      },
+      "call_outcome_characteristics": {
+        "answered_probability": 0.97,
+        "busy_probability": 0.005,
+        "no_answer_probability": 0.01,
+        "rejected_probability": 0.0,
+        "failed_probability": 0.015
+      }
+    },
+    {
+      "category_id": "personal_communication",
+      "call_frequency": { "band": "low_medium", "calls_per_active_user_per_day": { "min": 1, "max": 3 } },
+      "duration_characteristics": { "band": "medium_long_high_variance", "seconds": { "min": 60, "max": 1800 } },
+      "temporal_characteristics": {
+        "window_type": "evening_and_weekend",
+        "hour_of_day_distribution": "flat_with_evening_rise",
+        "hour_of_day_peaks": [{ "start": 18, "end": 22 }],
+        "day_of_week_distribution": "weekend_elevated",
+        "weekday_weekend_ratio": 1.0,
+        "burst_events": [],
+        "periodic_events": [
+          { "trigger": "recurring_weekly_call", "occurs": "same_weekday_weekly", "multiplier": 1.3, "amplitude": "low" }
+        ],
+        "response_call_behavior": { "return_call_probability": 0.4, "return_call_delay_seconds": { "min": 60, "max": 7200 } },
+        "escalation_behavior": { "escalation_probability": 0.15, "max_escalation_attempts": 2, "escalation_interval_seconds": { "min": 600, "max": 3600 } }
+      },
+      "interaction_characteristics": {
+        "interaction_type": "frequent_repeat",
+        "repeat_caller_callee_probability": { "stable_contact_set": 0.75, "incidental_contact": 0.05 },
+        "contact_persistence": "high_within_stable_set",
+        "community_based": true,
+        "community_basis": "social_not_organizational"
+      },
+      "call_outcome_characteristics": {
+        "answered_probability": 0.70,
+        "busy_probability": 0.05,
+        "no_answer_probability": 0.15,
+        "rejected_probability": 0.05,
+        "failed_probability": 0.05
+      }
+    }
+  ]
+}
